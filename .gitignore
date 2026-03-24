@@ -1,0 +1,12 @@
+# Binaries
+jira
+jira-go
+
+# OS files
+.DS_Store
+
+# Env files
+.env
+
+# Dependencies
+vendor/
