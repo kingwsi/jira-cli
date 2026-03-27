@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/fatih/color"
+	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 	"github.com/ws/jira-cli/internal/jira"
 )
@@ -87,13 +88,74 @@ var issueCreateCmd = &cobra.Command{
 	},
 }
 
+var issueUpdateCmd = &cobra.Command{
+	Use:   "update [issue_key]",
+	Short: "更新问题的属性。",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		key := args[0]
+		start, _ := cmd.Flags().GetString("start")
+		end, _ := cmd.Flags().GetString("end")
+		estimate, _ := cmd.Flags().GetString("estimate")
+		summary, _ := cmd.Flags().GetString("summary")
+		version, _ := cmd.Flags().GetString("version")
+
+		fields := make(map[string]interface{})
+		if start != "" {
+			fields["customfield_10300"] = start
+		}
+		if end != "" {
+			fields["customfield_10301"] = end
+		}
+		if estimate != "" {
+			fields["timetracking"] = map[string]interface{}{
+				"originalEstimate": estimate,
+			}
+		}
+		if summary != "" {
+			fields["summary"] = summary
+		}
+		if version != "" {
+			fields["customfield_10210"] = version
+		}
+
+		if len(fields) == 0 {
+			return fmt.Errorf("没有指定任何要更新的字段")
+		}
+
+		spinner, _ := pterm.DefaultSpinner.Start(fmt.Sprintf("正在更新问题 %s...", key))
+		
+		client, err := jira.NewClient()
+		if err != nil {
+			spinner.Fail(err.Error())
+			return err
+		}
+
+		err = client.UpdateIssue(key, fields)
+		if err != nil {
+			spinner.Fail(err.Error())
+			return err
+		}
+
+		spinner.Success(fmt.Sprintf("问题 %s 更新成功", key))
+		return nil
+	},
+}
+
 func init() {
 	issueCreateCmd.Flags().StringP("project", "p", "", "项目键 (必填)")
 	issueCreateCmd.Flags().StringP("summary", "s", "", "问题概要 (必填)")
 	issueCreateCmd.Flags().StringP("type", "t", "Task", "问题类型")
 	issueCreateCmd.Flags().StringP("description", "d", "", "问题描述")
 
+	issueUpdateCmd.Flags().String("start", "", "预计开始时间 (例如: 2023-10-27)")
+	issueUpdateCmd.Flags().String("end", "", "预计结束时间 (例如: 2023-10-30)")
+	issueUpdateCmd.Flags().String("estimate", "", "初始预估 (例如: 1d 2h 或 3600)")
+	issueUpdateCmd.Flags().StringP("summary", "s", "", "更新概要/标题")
+	issueUpdateCmd.Flags().String("version", "", "发布版本")
+
 	issueCmd.AddCommand(issueGetCmd)
 	issueCmd.AddCommand(issueCreateCmd)
+	issueCmd.AddCommand(issueUpdateCmd)
 	rootCmd.AddCommand(issueCmd)
 }

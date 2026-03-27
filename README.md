@@ -72,6 +72,12 @@ Jira CLI 不再使用 `.env` 文件存储密码。请使用以下命令进行安
 
 # 创建新问题
 ./jira issue create -p PROJ -s "问题概要" -t "Task" -d "详细描述"
+
+# 更新问题属性 (预计开始、结束、初始预估)
+./jira issue update PROJ-123 --start "2023-11-01" --end "2023-11-05" --estimate "2d 4h"
+
+# 仅更新概要
+./jira issue update PROJ-123 -s "新的标题"
 ```
 
 ### 项目管理
