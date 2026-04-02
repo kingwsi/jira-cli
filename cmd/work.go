@@ -12,6 +12,72 @@ import (
 	"github.com/ws/jira-cli/internal/ui"
 )
 
+func isCurrentUserWorklogAuthor(log jira.Worklog, me *jira.User, client *jira.Client) bool {
+	if me == nil {
+		return false
+	}
+
+	if log.Author.AccountID != "" && me.AccountID != "" && log.Author.AccountID == me.AccountID {
+		return true
+	}
+	if log.Author.EmailAddress != "" && me.EmailAddress != "" && log.Author.EmailAddress == me.EmailAddress {
+		return true
+	}
+	if log.Author.DisplayName == me.DisplayName {
+		return true
+	}
+	if strings.EqualFold(log.Author.EmailAddress, client.Username) {
+		return true
+	}
+	if me.AccountID == "" && me.EmailAddress == "" {
+		return true
+	}
+
+	return false
+}
+
+func loadRecentWorklogTotals(client *jira.Client, me *jira.User, days []time.Time) (map[string]int, error) {
+	totalsByDate := make(map[string]int, len(days))
+	if len(days) == 0 {
+		return totalsByDate, nil
+	}
+
+	startDateStr := days[len(days)-1].Format("2006-01-02")
+	jql := fmt.Sprintf("worklogAuthor = currentUser() AND worklogDate >= '%s'", startDateStr)
+
+	result, err := client.Search(jql, 100)
+	if err != nil {
+		return nil, err
+	}
+
+	validDates := make(map[string]struct{}, len(days))
+	for _, day := range days {
+		validDates[day.Format("2006-01-02")] = struct{}{}
+	}
+
+	for _, issue := range result.Issues {
+		logs, err := client.GetWorklogs(issue.Key)
+		if err != nil {
+			continue
+		}
+
+		for _, log := range logs {
+			if !isCurrentUserWorklogAuthor(log, me, client) || len(log.Started) < 10 {
+				continue
+			}
+
+			dateStr := log.Started[:10]
+			if _, ok := validDates[dateStr]; !ok {
+				continue
+			}
+
+			totalsByDate[dateStr] += log.TimeSpentSeconds
+		}
+	}
+
+	return totalsByDate, nil
+}
+
 var workCmd = &cobra.Command{
 	Use:   "work [issue_key] [time_spent]",
 	Short: "管理工作日志 (默认进入交互模式)",
@@ -21,12 +87,12 @@ var workCmd = &cobra.Command{
 			// Redirecting to workAddCmd
 			return workAddCmd.RunE(workAddCmd, args)
 		}
-		
+
 		// If there is exactly one argument and it is a known subcommand, it should have been caught.
 		// If there is one argument and it is NOT a subcommand (e.g., just key), it will reach here.
-		// Cobra handles subcommands first, so if we reach here with arg[0] == "list", it means 
+		// Cobra handles subcommands first, so if we reach here with arg[0] == "list", it means
 		// Cobra didn't match it (which shouldn't happen if we register it).
-		
+
 		// If no arguments or just 1 argument, enter interactive mode
 		return runInteractiveWork()
 	},
@@ -121,20 +187,7 @@ var workListCmd = &cobra.Command{
 			}
 
 			for _, log := range logs {
-				isMe := false
-				if log.Author.AccountID != "" && me.AccountID != "" && log.Author.AccountID == me.AccountID {
-					isMe = true
-				} else if log.Author.EmailAddress != "" && me.EmailAddress != "" && log.Author.EmailAddress == me.EmailAddress {
-					isMe = true
-				} else if log.Author.DisplayName == me.DisplayName {
-					isMe = true
-				} else if strings.EqualFold(log.Author.EmailAddress, client.Username) {
-					isMe = true
-				} else if me.AccountID == "" && me.EmailAddress == "" {
-					isMe = true
-				}
-
-				if !isMe {
+				if !isCurrentUserWorklogAuthor(log, me, client) {
 					continue
 				}
 
@@ -175,6 +228,12 @@ func runInteractiveWork() error {
 		return nil
 	}
 
+	me, err := client.GetCurrentUser()
+	if err != nil {
+		spinner.Fail("获取当前用户信息失败: " + err.Error())
+		return err
+	}
+
 	// 1. Select Issue
 	options := make([]string, 0, len(result.Issues))
 	for _, issue := range result.Issues {
@@ -205,12 +264,12 @@ func runInteractiveWork() error {
 		expected = runewidth.FillRight(expected, 11)
 
 		// Layout: [KEY]  SUMMARY  | 预估: X  | 已记: Y  | 周期: Z
-		options = append(options, fmt.Sprintf("%s | %s | 预估:%-5s | 已记:%-5s | 周期:%s", 
+		options = append(options, fmt.Sprintf("%s | %s | 预估:%-5s | 已记:%-5s | 周期:%s",
 			key, summary, pterm.Magenta(estimate), pterm.Yellow(logged), pterm.Green(expected)))
 	}
 
 	selectedIssueStr, _ := pterm.DefaultInteractiveSelect.WithDefaultText("请选择要记录工时的 Issue").WithOptions(options).Show()
-	
+
 	// Find the issue object
 	var selectedIssue jira.Issue
 	for i, opt := range options {
@@ -220,13 +279,25 @@ func runInteractiveWork() error {
 		}
 	}
 
-	// 2. Select Date (Last 7 days)
-	dateOptions := make([]string, 0, 7)
+	// 2. Select Date (Today and previous 7 days)
+	days := make([]time.Time, 0, 8)
 	today := time.Now()
-	for i := 0; i < 7; i++ {
-		d := today.AddDate(0, 0, -i)
+	for i := 0; i <= 7; i++ {
+		days = append(days, today.AddDate(0, 0, -i))
+	}
+
+	totalsByDate, err := loadRecentWorklogTotals(client, me, days)
+	if err != nil {
+		return fmt.Errorf("获取最近工时汇总失败: %w", err)
+	}
+
+	dateOptions := make([]string, 0, 8)
+	for i, d := range days {
 		weekday := []string{"日", "一", "二", "三", "四", "五", "六"}[d.Weekday()]
-		dateOptions = append(dateOptions, fmt.Sprintf("%s (星期%s)%s", d.Format("2006-01-02"), weekday, map[bool]string{true: " [今天]", false: ""}[i == 0]))
+		dateStr := d.Format("2006-01-02")
+		total := ui.FormatDuration(totalsByDate[dateStr])
+		dateOptions = append(dateOptions, fmt.Sprintf("%s (星期%s)%s | 已记: %s",
+			dateStr, weekday, map[bool]string{true: " [今天]", false: ""}[i == 0], pterm.Yellow(total)))
 	}
 
 	selectedDateOption, _ := pterm.DefaultInteractiveSelect.WithDefaultText("请选择日期").WithOptions(dateOptions).Show()
