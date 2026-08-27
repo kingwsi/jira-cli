@@ -2,13 +2,16 @@ package auth
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 
 	"github.com/zalando/go-keyring"
 )
 
 const (
-	serviceName = "ws-jira-cli-tool-v1"
-	accountName = "current-user"
+	serviceName       = "jira-workbench"
+	legacyServiceName = "ws-jira-cli-tool-v1"
+	accountName       = "current-user"
 )
 
 type Config struct {
@@ -17,18 +20,44 @@ type Config struct {
 	Password string `json:"password"`
 }
 
+func getConfigFilePath() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ".jira-workbench.json"
+	}
+	return filepath.Join(home, ".jira-workbench.json")
+}
+
 func SaveConfig(config Config) error {
 	data, err := json.Marshal(config)
 	if err != nil {
 		return err
 	}
-	return keyring.Set(serviceName, accountName, string(data))
+
+	// 尝试优先存储在操作系统安全钥匙串
+	if err := keyring.Set(serviceName, accountName, string(data)); err == nil {
+		return nil
+	}
+
+	// 如果系统不支持 keyring（如无图形界面的服务器/容器），降级存储至用户主目录配置文件
+	return os.WriteFile(getConfigFilePath(), data, 0600)
 }
 
 func LoadConfig() (*Config, error) {
+	// 1. 尝试从主服务名 keyring 获取
 	data, err := keyring.Get(serviceName, accountName)
 	if err != nil {
-		return nil, err
+		// 2. 尝试从历史 CLI 服务名 keyring 获取（兼容旧版数据）
+		data, err = keyring.Get(legacyServiceName, accountName)
+	}
+
+	// 3. 如果 keyring 获取失败，降级从主目录配置文件读取
+	if err != nil {
+		fileData, fileErr := os.ReadFile(getConfigFilePath())
+		if fileErr != nil {
+			return nil, err
+		}
+		data = string(fileData)
 	}
 
 	var config Config
@@ -39,14 +68,13 @@ func LoadConfig() (*Config, error) {
 }
 
 func DeleteConfig() error {
-	err := keyring.Delete(serviceName, accountName)
-	if err != nil && err != keyring.ErrNotFound {
-		return err
-	}
+	_ = keyring.Delete(serviceName, accountName)
+	_ = keyring.Delete(legacyServiceName, accountName)
+	_ = os.Remove(getConfigFilePath())
 	return nil
 }
 
 func HasConfig() bool {
-	_, err := keyring.Get(serviceName, accountName)
-	return err == nil
+	cfg, err := LoadConfig()
+	return err == nil && cfg != nil && cfg.URL != ""
 }

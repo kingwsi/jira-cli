@@ -30,7 +30,7 @@ func (e *AuthError) Error() string {
 func NewClient() (*Client, error) {
 	config, err := auth.LoadConfig()
 	if err != nil || config == nil || config.URL == "" {
-		return nil, &AuthError{Message: "未找到登录信息。请先运行 'jira login' 或在 Web 设置页面配置身份验证"}
+		return nil, &AuthError{Message: "未找到 Jira 认证信息，请在 Web 设置页面配置 Jira URL 与账号凭据"}
 	}
 	return createClient(config.URL, config.Username, config.Password)
 }
