@@ -1,0 +1,64 @@
+/* Forms Component */
+[data-ui="form-group"] {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+[data-ui="form-label"] {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+[data-ui="input"],
+[data-ui="select"],
+[data-ui="textarea"] {
+  width: 100%;
+  padding: 7px 10px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--text-primary);
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+[data-ui="input"]:focus,
+[data-ui="select"]:focus,
+[data-ui="textarea"]:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+[data-ui="input"]:disabled,
+[data-ui="select"]:disabled,
+[data-ui="textarea"]:disabled {
+  background-color: var(--bg-surface-dim);
+  cursor: not-allowed;
+}
+
+[data-ui="textarea"] {
+  min-height: 80px;
+  resize: vertical;
+}
+
+[data-ui="search-input"] {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+[data-ui="search-input"] svg {
+  position: absolute;
+  left: 10px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+[data-ui="search-input"] [data-ui="input"] {
+  padding-left: 32px;
+}

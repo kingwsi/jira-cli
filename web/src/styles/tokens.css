@@ -1,0 +1,67 @@
+/* ==========================================================================
+   Design Tokens & CSS Variables (Jira Workbench Theme)
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* Typography */
+  --font-sans: 'Hanken Grotesk', 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Geist Mono', SFMono-Regular, Consolas, monospace;
+
+  /* Color Palette */
+  --bg-app: #f4f5f7;
+  --bg-surface: #ffffff;
+  --bg-surface-dim: #ebecf0;
+  --bg-surface-hover: #f4f5f7;
+  --bg-card: #ffffff;
+  --bg-input: #ffffff;
+  --bg-sidebar: #0747a6;
+  --bg-sidebar-hover: #0052cc;
+  
+  --text-primary: #172b4d;
+  --text-secondary: #42526e;
+  --text-muted: #6b778c;
+  --text-inverse: #ffffff;
+
+  --border-subtle: rgba(9, 30, 66, 0.08);
+  --border-default: #dfe1e6;
+  --border-strong: #a5b2c6;
+  
+  --color-primary: #0052cc;
+  --color-primary-hover: #0047b3;
+  --focus-ring: 0 0 0 2px rgba(0, 82, 204, 0.3);
+
+  /* Status Colors */
+  --color-success: #00875a;
+  --bg-success-subtle: #e3fcef;
+  --border-success: #abf5d1;
+
+  --color-warning: #ff8b00;
+  --bg-warning-subtle: #fff0b3;
+  --border-warning: #ffe380;
+
+  --color-danger: #de350b;
+  --bg-danger-subtle: #ffebe6;
+  --border-danger: #ffbdad;
+
+  --color-info: #0052cc;
+  --bg-info-subtle: #deebff;
+  --border-info: #b3d4ff;
+
+  --color-neutral: #42526e;
+  --bg-neutral-subtle: #ebecf0;
+  --border-neutral: #dfe1e6;
+
+  /* Radii & Shadows */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 1px 2px rgba(9, 30, 66, 0.08);
+  --shadow-md: 0 4px 12px rgba(9, 30, 66, 0.12);
+  --shadow-lg: 0 8px 24px rgba(9, 30, 66, 0.16);
+  --shadow-drawer: -4px 0 24px rgba(9, 30, 66, 0.2);
+}

@@ -1,0 +1,86 @@
+/* Tables Component */
+[data-ui="table-container"] {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  box-shadow: var(--shadow-sm);
+}
+
+[data-ui="table"] {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+
+[data-ui="table"] th {
+  background-color: var(--bg-surface-dim);
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-default);
+  white-space: nowrap;
+}
+
+[data-ui="table"] td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+
+[data-ui="table"] tr:last-child td {
+  border-bottom: none;
+}
+
+[data-ui="table"] tr:hover td {
+  background-color: var(--bg-surface-hover);
+}
+
+/* Status & Tags Component */
+[data-ui="tag"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: var(--radius-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  background-color: var(--bg-neutral-subtle);
+  color: var(--color-neutral);
+  border: 1px solid var(--border-neutral);
+}
+
+[data-ui="tag"][data-status="done"],
+[data-ui="tag"][data-status="closed"],
+[data-ui="tag"][data-status="success"] {
+  background-color: var(--bg-success-subtle);
+  color: var(--color-success);
+  border-color: var(--border-success);
+}
+
+[data-ui="tag"][data-status="in-progress"],
+[data-ui="tag"][data-status="warning"] {
+  background-color: var(--bg-warning-subtle);
+  color: var(--color-warning);
+  border-color: var(--border-warning);
+}
+
+[data-ui="tag"][data-status="todo"],
+[data-ui="tag"][data-status="info"] {
+  background-color: var(--bg-info-subtle);
+  color: var(--color-info);
+  border-color: var(--border-info);
+}
+
+[data-ui="tag"][data-status="danger"],
+[data-ui="tag"][data-status="blocker"],
+[data-ui="tag"][data-status="critical"] {
+  background-color: var(--bg-danger-subtle);
+  color: var(--color-danger);
+  border-color: var(--border-danger);
+}

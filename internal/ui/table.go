@@ -79,7 +79,7 @@ func RenderTodosTable(issues []jira.Issue, baseURL string) {
 			pterm.LightGreen(issue.Fields.Status.Name),
 			pterm.Green(expectedStart),
 			pterm.Yellow(expectedEnd),
-			pterm.Magenta(FormatDuration(issue.Fields.TimeOriginalEstimate)),
+			pterm.Magenta(FormatDuration(int(issue.Fields.TimeOriginalEstimate))),
 			pterm.Cyan(releaseVersion),
 		})
 	}

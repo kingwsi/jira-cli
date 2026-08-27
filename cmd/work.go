@@ -246,8 +246,8 @@ func runInteractiveWork() error {
 		}
 		summary = runewidth.FillRight(summary, 30)
 
-		estimate := ui.FormatDuration(issue.Fields.TimeOriginalEstimate)
-		logged := ui.FormatDuration(issue.Fields.TimeSpent)
+		estimate := ui.FormatDuration(int(issue.Fields.TimeOriginalEstimate))
+		logged := ui.FormatDuration(int(issue.Fields.TimeSpent))
 
 		expected := "-"
 		if issue.Fields.ExpectedStart != "" || issue.Fields.ExpectedEnd != "" {

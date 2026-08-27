@@ -1,0 +1,106 @@
+/* Admin Shell Layout - Top Navigation Mode */
+[data-ui="admin-shell"] {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--bg-app);
+}
+
+/* Top Navigation Bar */
+[data-ui="top-nav"] {
+  height: 56px;
+  background-color: #0747a6;
+  color: #deebff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  flex-shrink: 0;
+}
+
+[data-ui="top-nav-left"] {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+[data-ui="top-nav-brand"] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+[data-ui="top-nav-logo"] {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, #0052cc, #2684ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+}
+
+[data-ui="top-nav-title"] {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+[data-ui="top-nav-links"] {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+[data-ui="top-nav-item"] {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  color: #deebff;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+[data-ui="top-nav-item"]:hover {
+  background-color: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+[data-ui="top-nav-item"].active {
+  background-color: rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+[data-ui="top-nav-right"] {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Main Container */
+[data-ui="admin-main"] {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+[data-ui="page-content"] {
+  padding: 20px 24px;
+  flex: 1;
+  max-width: 100%;
+}

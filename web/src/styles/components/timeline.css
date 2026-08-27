@@ -1,0 +1,420 @@
+/* ==========================================================================
+   Gantt & Timeline Component (Unified Sticky-Table Architecture)
+   ========================================================================== */
+
+[data-ui="gantt-container"] {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  height: calc(100vh - 150px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 统一单容器可滚动视口 (同时支持垂直与水平原生滚动) */
+[data-ui="gantt-viewport"] {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  background-color: #ffffff;
+}
+
+/* 头部行 (Sticky Top) */
+[data-ui="gantt-header-row"] {
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background-color: #f4f5f7;
+  border-bottom: 2px solid var(--border-default);
+  user-select: none;
+}
+
+[data-ui="gantt-header-date-row"] {
+  display: flex;
+  height: 42px;
+  border-bottom: 1px solid rgba(9, 30, 66, 0.08);
+}
+
+[data-ui="gantt-header-pressure-row"] {
+  display: flex;
+  height: 26px;
+  background-color: #fafbfc;
+}
+
+/* 每一行 (同一行一体化，行高绝对严格统一为 42px) */
+[data-ui="gantt-row"] {
+  display: flex;
+  height: 42px;
+  min-height: 42px;
+  border-bottom: 1px solid rgba(9, 30, 66, 0.06);
+  position: relative;
+  transition: background-color 0.12s ease;
+  box-sizing: border-box;
+}
+
+/* 斑马纹交替 */
+[data-ui="gantt-row"].zebra-even {
+  background-color: #ffffff;
+}
+
+[data-ui="gantt-row"].zebra-odd {
+  background-color: #f9fafb;
+}
+
+/* 父需求行特有高质感底色与左边框 */
+[data-ui="gantt-row"].parent-row {
+  background-color: #f3f0fa !important;
+  font-weight: 600;
+}
+
+/* 悬停整行高亮 */
+[data-ui="gantt-row"]:hover,
+[data-ui="gantt-row"].row-hovered {
+  background-color: #e9f2ff !important;
+}
+
+/* 左侧标题列 (Sticky Left，水平滚动时牢牢固定在左侧，永不错位) */
+[data-ui="gantt-title-col"] {
+  width: 440px;
+  min-width: 440px;
+  max-width: 440px;
+  position: sticky;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  background-color: inherit;
+  border-right: 2px solid var(--border-default);
+  box-shadow: 3px 0 6px rgba(0, 0, 0, 0.04);
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+[data-ui="gantt-header-date-row"] [data-ui="gantt-title-col"] {
+  z-index: 35;
+  background-color: #f4f5f7;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text-secondary);
+  justify-content: space-between;
+}
+
+[data-ui="gantt-header-pressure-row"] [data-ui="gantt-title-col"] {
+  z-index: 35;
+  background-color: #fafbfc;
+  font-weight: 500;
+  font-size: 11px;
+  color: var(--text-secondary);
+  justify-content: space-between;
+  padding: 0 12px;
+}
+
+/* 右侧甘特时间线轨道 */
+[data-ui="gantt-timeline-track"] {
+  flex: 1;
+  display: flex;
+  position: relative;
+  background-color: inherit;
+}
+
+/* 标头中的日期列表 */
+[data-ui="gantt-days-track"] {
+  display: flex;
+  height: 100%;
+}
+
+[data-ui="gantt-day-col"] {
+  flex-shrink: 0;
+  width: 40px;
+  border-right: 1px solid rgba(9, 30, 66, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  box-sizing: border-box;
+  position: relative;
+}
+
+[data-ui="gantt-day-col"].weekend {
+  background-color: #f0f1f4;
+  color: var(--text-muted);
+}
+
+[data-ui="gantt-day-col"].holiday {
+  background-color: #ffebe6;
+  color: #de350b;
+}
+
+[data-ui="gantt-pressure-col"] {
+  flex-shrink: 0;
+  width: 40px;
+  border-right: 1px solid rgba(9, 30, 66, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+[data-ui="gantt-pressure-col"]:hover {
+  background-color: #e9f2ff !important;
+}
+
+[data-ui="gantt-pressure-col"].weekend {
+  background-color: rgba(9, 30, 66, 0.02);
+}
+
+[data-ui="gantt-pressure-col"].holiday {
+  background-color: rgba(222, 53, 11, 0.03);
+}
+
+[data-ui="gantt-pressure-col"].transfer-workday {
+  background-color: rgba(255, 139, 0, 0.03);
+}
+
+[data-ui="gantt-pressure-col"].today {
+  background-color: rgba(0, 82, 204, 0.04);
+}
+
+[data-ui="pressure-pill"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 4px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  border: 1px solid transparent;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  white-space: nowrap;
+  letter-spacing: -0.2px;
+  transition: transform 0.1s ease;
+}
+
+[data-ui="gantt-pressure-col"]:hover [data-ui="pressure-pill"] {
+  transform: scale(1.1);
+}
+
+[data-ui="pressure-empty-dot"] {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  transition: transform 0.1s ease, background-color 0.15s ease;
+}
+
+[data-ui="gantt-pressure-col"]:hover [data-ui="pressure-empty-dot"] {
+  transform: scale(1.8);
+  background-color: var(--color-primary) !important;
+}
+
+[data-ui="gantt-day-col"].transfer-workday {
+  background-color: #fff0b3;
+  color: #172b4d;
+}
+
+[data-ui="gantt-day-col"].today {
+  background-color: #deebff !important;
+  color: var(--color-primary) !important;
+  font-weight: 700;
+}
+
+/* 假日与调休小角标 */
+[data-ui="holiday-tag"] {
+  font-size: 8.5px;
+  line-height: 1;
+  padding: 1px 2px;
+  border-radius: 2px;
+  font-weight: 700;
+  margin-top: 1px;
+}
+
+[data-ui="holiday-tag"].holiday {
+  background-color: #ff5630;
+  color: #ffffff;
+}
+
+[data-ui="holiday-tag"].workday {
+  background-color: #ff8b00;
+  color: #ffffff;
+}
+
+/* 贯穿行内部的每日垂直网格细线 */
+[data-ui="gantt-row-grid"] {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  pointer-events: none;
+}
+
+[data-ui="gantt-grid-cell"] {
+  flex-shrink: 0;
+  width: 40px;
+  border-right: 1px solid rgba(9, 30, 66, 0.06);
+  height: 100%;
+  box-sizing: border-box;
+}
+
+[data-ui="gantt-grid-cell"].weekend {
+  background-color: rgba(9, 30, 66, 0.025);
+}
+
+[data-ui="gantt-grid-cell"].holiday {
+  background-color: rgba(255, 86, 48, 0.04);
+}
+
+[data-ui="gantt-grid-cell"].transfer-workday {
+  background-color: rgba(255, 171, 0, 0.04);
+}
+
+[data-ui="gantt-grid-cell"].today {
+  background-color: rgba(0, 82, 204, 0.04);
+  border-left: 1px dashed rgba(0, 82, 204, 0.3);
+}
+
+/* 排期甘特条 */
+[data-ui="gantt-bar-wrapper"] {
+  position: absolute;
+  top: 7px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #ffffff;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: box-shadow 0.15s ease, transform 0.1s ease, filter 0.15s ease;
+  z-index: 5;
+  overflow: hidden;
+}
+
+[data-ui="gantt-bar-wrapper"]:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+  z-index: 15;
+}
+
+[data-ui="gantt-bar-wrapper"][data-type="parent"] {
+  background: linear-gradient(90deg, #403294, #5e4db2);
+  border: 1px solid #352684;
+}
+
+/* 当前登录用户的任务：高质感绿色 */
+[data-ui="gantt-bar-wrapper"][data-type="my-task"] {
+  background: linear-gradient(90deg, #00875a, #36b37e);
+  border: 1px solid #006644;
+}
+
+/* 团队其他成员的任务：专业深蓝 */
+[data-ui="gantt-bar-wrapper"][data-type="other-task"],
+[data-ui="gantt-bar-wrapper"][data-type="task"] {
+  background: linear-gradient(90deg, #0052cc, #2684ff);
+  border: 1px solid #0047b3;
+}
+
+[data-ui="gantt-bar-wrapper"][data-type="bug"] {
+  background: linear-gradient(90deg, #de350b, #ff5630);
+  border: 1px solid #bf2600;
+}
+
+/* 非选中用户条目的暗化降权样式 */
+[data-ui="gantt-bar-wrapper"].dimmed {
+  opacity: 0.32;
+  filter: grayscale(60%) brightness(0.8);
+  box-shadow: none;
+}
+
+[data-ui="gantt-bar-wrapper"].dimmed:hover {
+  opacity: 0.95;
+  filter: none;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+  z-index: 20;
+}
+
+/* ==========================================================================
+   Gantt Rich Tooltip Popover
+   ========================================================================== */
+
+[data-ui="gantt-tooltip"] {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  background: rgba(23, 43, 77, 0.96);
+  backdrop-filter: blur(10px);
+  color: #ffffff;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 28px rgba(9, 30, 66, 0.4), 0 0 1px rgba(255, 255, 255, 0.25);
+  width: 290px;
+  font-size: 12px;
+  animation: tooltip-fade 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  line-height: 1.4;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+[data-ui="gantt-tooltip-header"] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+[data-ui="gantt-tooltip-title"] {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  word-break: break-word;
+}
+
+[data-ui="gantt-tooltip-row"] {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: #c1c7d0;
+}
+
+[data-ui="gantt-tooltip-progress-bg"] {
+  width: 100%;
+  height: 6px;
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+[data-ui="gantt-tooltip-progress-fill"] {
+  height: 100%;
+  background: linear-gradient(90deg, #36b37e, #00875a);
+  border-radius: 3px;
+  transition: width 0.2s ease;
+}
+
+@keyframes tooltip-fade {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

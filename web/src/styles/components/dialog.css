@@ -1,0 +1,75 @@
+/* Dialog & Drawer Component */
+[data-ui="modal-backdrop"] {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(9, 30, 66, 0.54);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+[data-ui="modal-content"] {
+  background-color: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 560px;
+  border: 1px solid var(--border-default);
+  overflow: hidden;
+  animation: modal-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-ui="drawer-content"] {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 600px;
+  max-width: 90vw;
+  background-color: var(--bg-surface);
+  box-shadow: var(--shadow-drawer);
+  border-left: 1px solid var(--border-default);
+  z-index: 55;
+  display: flex;
+  flex-direction: column;
+  animation: drawer-slide 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-ui="modal-header"],
+[data-ui="drawer-header"] {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+[data-ui="modal-body"],
+[data-ui="drawer-body"] {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+[data-ui="modal-footer"],
+[data-ui="drawer-footer"] {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border-default);
+  background-color: var(--bg-surface-hover);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+@keyframes modal-enter {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes drawer-slide {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}

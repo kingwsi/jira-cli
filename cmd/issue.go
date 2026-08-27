@@ -76,7 +76,7 @@ var issueCreateCmd = &cobra.Command{
 
 		fmt.Printf("正在项目 %s 中创建问题...\n", project)
 		
-		issue, err := client.CreateIssue(project, summary, issueType, description)
+		issue, err := client.CreateIssue(project, summary, issueType, description, "")
 		if err != nil {
 			return err
 		}
