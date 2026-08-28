@@ -8,6 +8,7 @@ import {
   Layers,
   Search,
   User,
+  FileText,
 } from 'lucide-react'
 import { api } from '../api/client'
 
@@ -48,6 +49,15 @@ export const Header: React.FC<HeaderProps> = ({ onSelectIssue }) => {
           >
             <CheckSquare size={15} />
             <span>待办</span>
+          </NavLink>
+
+          <NavLink
+            to="/requirements"
+            data-ui="top-nav-item"
+            className={({ isActive }) => (isActive ? 'active' : '')}
+          >
+            <FileText size={15} />
+            <span>需求</span>
           </NavLink>
 
           <NavLink

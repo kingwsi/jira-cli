@@ -6,10 +6,38 @@ export interface UserInfo {
   avatarUrl?: string
 }
 
+export interface ProgressReport {
+  currentProgress?: number
+  lastWeekProgress?: number
+  progressStatus?: string
+  productProgress?: number
+  devProgress?: number
+  testProgress?: number
+  releaseProgress?: number
+  deployProgress?: number
+  techSolutionDesc?: string
+  latestComment?: string
+  category?: string
+  demandType?: string
+  clientName?: string
+  productManager?: UserInfo
+  isContractDemand?: string
+  affectsDelivery?: string
+}
+
+export interface CommentItem {
+  id: string
+  author: UserInfo
+  body: string
+  created: string
+  updated: string
+}
+
 export interface IssueItem {
   key: string
   id: string
   projectKey: string
+  projectName?: string
   summary: string
   description?: string
   issueType: string
@@ -28,6 +56,8 @@ export interface IssueItem {
   createdAt: string
   updatedAt: string
   subtasks?: IssueItem[]
+  customFields?: Record<string, any>
+  progressReport?: ProgressReport
 }
 
 export interface PlanningTreeNode {

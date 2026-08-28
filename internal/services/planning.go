@@ -107,6 +107,7 @@ func (s *PlanningService) ConvertIssue(raw jira.Issue) models.IssueItem {
 		Key:               raw.Key,
 		ID:                raw.ID,
 		ProjectKey:        raw.Fields.Project.Key,
+		ProjectName:       raw.Fields.Project.Name,
 		Summary:           raw.Fields.Summary,
 		Description:       raw.Fields.Description,
 		IssueType:         raw.Fields.IssueType.Name,
@@ -115,10 +116,156 @@ func (s *PlanningService) ConvertIssue(raw jira.Issue) models.IssueItem {
 		OriginalEstimate:  origEst,
 		RemainingEstimate: raw.Fields.TimeEstimate,
 		TimeSpent:         timeSpent,
+		CustomFields:      raw.Fields.ExtraFields,
 	}
 
 	if raw.Fields.Status.StatusCategory != nil {
 		item.StatusCategory = raw.Fields.Status.StatusCategory.Name
+	}
+
+	// 提取进度与周报相关自定义字段
+	if len(raw.Fields.ExtraFields) > 0 {
+		var pr models.ProgressReport
+		hasPR := false
+
+		if v, ok := raw.Fields.ExtraFields["customfield_10815"]; ok && v != nil {
+			if f, ok := v.(float64); ok {
+				val := int(f)
+				pr.CurrentProgress = &val
+				hasPR = true
+			}
+		}
+		if v, ok := raw.Fields.ExtraFields["customfield_10814"]; ok && v != nil {
+			if f, ok := v.(float64); ok {
+				val := int(f)
+				pr.LastWeekProgress = &val
+				hasPR = true
+			}
+		}
+		if v, ok := raw.Fields.ExtraFields["customfield_10808"]; ok && v != nil {
+			if m, ok := v.(map[string]any); ok {
+				if val, ok := m["value"].(string); ok {
+					pr.ProgressStatus = val
+					hasPR = true
+				}
+			}
+		}
+		if v, ok := raw.Fields.ExtraFields["customfield_10809"]; ok && v != nil {
+			if f, ok := v.(float64); ok {
+				val := int(f)
+				pr.ProductProgress = &val
+				hasPR = true
+			}
+		}
+		if v, ok := raw.Fields.ExtraFields["customfield_10810"]; ok && v != nil {
+			if f, ok := v.(float64); ok {
+				val := int(f)
+				pr.DevProgress = &val
+				hasPR = true
+			}
+		}
+		if v, ok := raw.Fields.ExtraFields["customfield_10811"]; ok && v != nil {
+			if f, ok := v.(float64); ok {
+				val := int(f)
+				pr.TestProgress = &val
+				hasPR = true
+			}
+		}
+		if v, ok := raw.Fields.ExtraFields["customfield_10812"]; ok && v != nil {
+			if f, ok := v.(float64); ok {
+				val := int(f)
+				pr.ReleaseProgress = &val
+				hasPR = true
+			}
+		}
+		if v, ok := raw.Fields.ExtraFields["customfield_10813"]; ok && v != nil {
+			if f, ok := v.(float64); ok {
+				val := int(f)
+				pr.DeployProgress = &val
+				hasPR = true
+			}
+		}
+		if v, ok := raw.Fields.ExtraFields["customfield_10208"]; ok && v != nil {
+			if s, ok := v.(string); ok && strings.TrimSpace(s) != "" {
+				pr.TechSolutionDesc = s
+				hasPR = true
+			}
+		}
+		if v, ok := raw.Fields.ExtraFields["customfield_10209"]; ok && v != nil {
+			if s, ok := v.(string); ok {
+				pr.ClientName = s
+				hasPR = true
+			}
+		}
+		if v, ok := raw.Fields.ExtraFields["customfield_10805"]; ok && v != nil {
+			if m, ok := v.(map[string]any); ok {
+				if val, ok := m["value"].(string); ok {
+					pr.Category = val
+					hasPR = true
+				}
+			} else if s, ok := v.(string); ok {
+				pr.Category = s
+				hasPR = true
+			}
+		}
+		if v, ok := raw.Fields.ExtraFields["customfield_10201"]; ok && v != nil {
+			if m, ok := v.(map[string]any); ok {
+				if val, ok := m["value"].(string); ok {
+					pr.DemandType = val
+					hasPR = true
+				}
+			} else if s, ok := v.(string); ok {
+				pr.DemandType = s
+				hasPR = true
+			}
+		}
+		if v, ok := raw.Fields.ExtraFields["customfield_10902"]; ok && v != nil {
+			if m, ok := v.(map[string]any); ok {
+				dispName, _ := m["displayName"].(string)
+				name, _ := m["name"].(string)
+				email, _ := m["emailAddress"].(string)
+				if dispName == "" {
+					dispName = name
+				}
+				pr.ProductManager = &models.UserInfo{
+					Name:         name,
+					DisplayName:  dispName,
+					EmailAddress: email,
+				}
+				hasPR = true
+			}
+		}
+		if v, ok := raw.Fields.ExtraFields["customfield_11000"]; ok && v != nil {
+			if m, ok := v.(map[string]any); ok {
+				if val, ok := m["value"].(string); ok {
+					pr.IsContractDemand = val
+				}
+			}
+		}
+		if v, ok := raw.Fields.ExtraFields["customfield_11002"]; ok && v != nil {
+			if m, ok := v.(map[string]any); ok {
+				if val, ok := m["value"].(string); ok {
+					pr.AffectsDelivery = val
+				}
+			}
+		}
+		if v, ok := raw.Fields.ExtraFields["comment"]; ok && v != nil {
+			if m, ok := v.(map[string]any); ok {
+				if comments, ok := m["comments"].([]any); ok && len(comments) > 0 {
+					lastIdx := len(comments) - 1
+					if lastComment, ok := comments[lastIdx].(map[string]any); ok {
+						if body, ok := lastComment["body"].(string); ok {
+							pr.LatestComment = body
+							hasPR = true
+						}
+					}
+				}
+			}
+		}
+
+		if hasPR {
+			item.ProgressReport = &pr
+		}
 	}
 
 	if raw.Fields.Assignee != nil {

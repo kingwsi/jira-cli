@@ -7,6 +7,7 @@ import {
   ServerConfig,
   Project,
   Transition,
+  CommentItem,
 } from '../types'
 
 const BASE_URL = '/api/v1'
@@ -131,6 +132,8 @@ export const api = {
     action?: 'resolve' | 'reject'
     assignee?: string
     comment?: string
+    timeSpent?: string
+    workDate?: string
     autoChain?: boolean
   }) =>
     request<void>(`/issues/${params.key}/transitions`, {
@@ -140,9 +143,23 @@ export const api = {
         action: params.action || 'resolve',
         assignee: params.assignee || undefined,
         comment: params.comment ? params.comment.trim() : undefined,
+        timeSpent: params.timeSpent ? params.timeSpent.trim() : undefined,
+        workDate: params.workDate ? params.workDate.trim() : undefined,
         autoChain: params.autoChain ?? true,
       }),
     }),
+  getComments: (key: string) => request<CommentItem[]>(`/issues/${key}/comments`),
+  addComment: (key: string, comment: string) =>
+    request<void>(`/issues/${key}/comments`, { method: 'POST', body: JSON.stringify({ comment }) }),
+  updateWeeklyProgress: (
+    key: string,
+    body: {
+      currentProgress?: number
+      lastWeekProgress?: number
+      progressStatus?: string
+      comment?: string
+    }
+  ) => request<void>(`/issues/${key}/progress`, { method: 'POST', body: JSON.stringify(body) }),
 
   // Planning
   getPlanningTree: (params?: { month?: string; project?: string; assignee?: string; includeSiblings?: boolean }) => {

@@ -6,27 +6,49 @@ import (
 
 // IssueItem 代表前端统一展示的任务/缺陷模型
 type IssueItem struct {
-	Key               string      `json:"key"`
-	ID                string      `json:"id"`
-	ProjectKey        string      `json:"projectKey"`
-	Summary           string      `json:"summary"`
-	Description       string      `json:"description,omitempty"`
-	IssueType         string      `json:"issueType"` // Task, Bug, Story, Epic, Sub-task
-	Status            string      `json:"status"`
-	StatusCategory    string      `json:"statusCategory,omitempty"` // To Do, In Progress, Done
-	Priority          string      `json:"priority"`
-	Assignee          *UserInfo   `json:"assignee,omitempty"`
-	Reporter          *UserInfo   `json:"reporter,omitempty"`
-	ParentKey         string      `json:"parentKey,omitempty"`
-	ParentSummary     string      `json:"parentSummary,omitempty"`
-	StartDate         string      `json:"startDate,omitempty"` // YYYY-MM-DD
-	EndDate           string      `json:"endDate,omitempty"`   // YYYY-MM-DD
-	OriginalEstimate  int64       `json:"originalEstimateSeconds"`
-	RemainingEstimate int64       `json:"remainingEstimateSeconds"`
-	TimeSpent         int64       `json:"timeSpentSeconds"`
-	CreatedAt         time.Time   `json:"createdAt"`
-	UpdatedAt         time.Time   `json:"updatedAt"`
-	Subtasks          []IssueItem `json:"subtasks,omitempty"`
+	Key               string          `json:"key"`
+	ID                string          `json:"id"`
+	ProjectKey        string          `json:"projectKey"`
+	ProjectName       string          `json:"projectName,omitempty"`
+	Summary           string          `json:"summary"`
+	Description       string          `json:"description,omitempty"`
+	IssueType         string          `json:"issueType"` // Task, Bug, Story, Epic, Sub-task
+	Status            string          `json:"status"`
+	StatusCategory    string          `json:"statusCategory,omitempty"` // To Do, In Progress, Done
+	Priority          string          `json:"priority"`
+	Assignee          *UserInfo       `json:"assignee,omitempty"`
+	Reporter          *UserInfo       `json:"reporter,omitempty"`
+	ParentKey         string          `json:"parentKey,omitempty"`
+	ParentSummary     string          `json:"parentSummary,omitempty"`
+	StartDate         string          `json:"startDate,omitempty"` // YYYY-MM-DD
+	EndDate           string          `json:"endDate,omitempty"`   // YYYY-MM-DD
+	OriginalEstimate  int64           `json:"originalEstimateSeconds"`
+	RemainingEstimate int64           `json:"remainingEstimateSeconds"`
+	TimeSpent         int64           `json:"timeSpentSeconds"`
+	CreatedAt         time.Time       `json:"createdAt"`
+	UpdatedAt         time.Time       `json:"updatedAt"`
+	Subtasks          []IssueItem     `json:"subtasks,omitempty"`
+	CustomFields      map[string]any  `json:"customFields,omitempty"`
+	ProgressReport    *ProgressReport `json:"progressReport,omitempty"`
+}
+
+type ProgressReport struct {
+	CurrentProgress  *int      `json:"currentProgress,omitempty"`  // 当前总进度(%) customfield_10815
+	LastWeekProgress *int      `json:"lastWeekProgress,omitempty"` // 上周总进度(%) customfield_10814
+	ProgressStatus   string    `json:"progressStatus,omitempty"`   // 进度状态 customfield_10808 (正常/风险等)
+	ProductProgress  *int      `json:"productProgress,omitempty"`  // 产品进度(%) customfield_10809
+	DevProgress      *int      `json:"devProgress,omitempty"`      // 研发进度(%) customfield_10810
+	TestProgress     *int      `json:"testProgress,omitempty"`     // 集成测试进度(%) customfield_10811
+	ReleaseProgress  *int      `json:"releaseProgress,omitempty"`  // 发布进度(%) customfield_10812
+	DeployProgress   *int      `json:"deployProgress,omitempty"`   // 落地进度(%) customfield_10813
+	TechSolutionDesc string    `json:"techSolutionDesc,omitempty"` // 难度/技术方案/其他说明 customfield_10208
+	LatestComment    string    `json:"latestComment,omitempty"`    // 最新一条周报备注
+	Category         string    `json:"category,omitempty"`         // 分类 customfield_10805 (技术/业务等)
+	DemandType       string    `json:"demandType,omitempty"`       // 需求类型 customfield_10201 (项目支持等)
+	ClientName       string    `json:"clientName,omitempty"`       // 客户名称 customfield_10209
+	ProductManager   *UserInfo `json:"productManager,omitempty"`   // 产品经理 customfield_10902
+	IsContractDemand string    `json:"isContractDemand,omitempty"` // 是否合同内需求 customfield_11000
+	AffectsDelivery  string    `json:"affectsDelivery,omitempty"`  // 是否会影响项目验收 customfield_11002
 }
 
 type UserInfo struct {

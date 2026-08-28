@@ -271,6 +271,22 @@ func (c *Client) GetIssue(key string) (*Issue, error) {
 	return &issue, nil
 }
 
+type Comment struct {
+	ID           string `json:"id"`
+	Author       User   `json:"author"`
+	UpdateAuthor User   `json:"updateAuthor"`
+	Body         string `json:"body"`
+	Created      string `json:"created"`
+	Updated      string `json:"updated"`
+}
+
+type CommentsResponse struct {
+	StartAt    int       `json:"startAt"`
+	MaxResults int       `json:"maxResults"`
+	Total      int       `json:"total"`
+	Comments   []Comment `json:"comments"`
+}
+
 func (c *Client) Search(jql string, maxResults int) (*SearchResponse, error) {
 	fields := []string{
 		"summary", "description", "status", "issuetype", "priority",
@@ -278,6 +294,9 @@ func (c *Client) Search(jql string, maxResults int) (*SearchResponse, error) {
 		"timeoriginalestimate", "aggregatetimeoriginalestimate", "timeestimate", "timespent", "aggregatetimespent",
 		"customfield_10300", "customfield_10301",
 		"parent", "subtasks", "fixVersions",
+		"customfield_10815", "customfield_10814", "customfield_10808", "customfield_10809",
+		"customfield_10209", "customfield_10805", "customfield_10201", "customfield_10902",
+		"customfield_11000", "customfield_11002", "comment",
 	}
 	return c.SearchAdvanced(jql, fields, maxResults)
 }
@@ -438,6 +457,17 @@ func (c *Client) AddComment(issueKey, comment string) error {
 		return apiErr
 	}
 	return nil
+}
+
+func (c *Client) GetComments(issueKey string) ([]Comment, error) {
+	var result CommentsResponse
+	resp, err := c.Client.R().
+		SetResult(&result).
+		Get("issue/" + issueKey + "/comment")
+	if apiErr := c.handleResponse(resp, err); apiErr != nil {
+		return nil, apiErr
+	}
+	return result.Comments, nil
 }
 
 func (c *Client) GetWorklogs(issueKey string) ([]Worklog, error) {

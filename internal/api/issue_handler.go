@@ -395,15 +395,15 @@ func autoTransition(client *jira.Client, key string, action string) error {
 	if action == "reject" || action == "拒绝" {
 		targetKeywords = []string{"拒绝", "非缺陷", "不予解决", "无法重现", "重复", "关闭", "reject", "rejected", "won't fix", "invalid", "duplicate", "close", "closed", "cannot reproduce"}
 	} else {
-		targetKeywords = []string{"解决", "已解决", "完成", "关闭", "resolve", "resolved", "done", "close", "fixed"}
+		targetKeywords = []string{"验收中", "验收", "解决", "已解决", "完成", "已结项", "关闭", "resolve", "resolved", "done", "close", "fixed", "acceptance"}
 	}
 
 	intermediateKeywords := []string{
-		"接收", "接受", "指派", "处理", "开始", "进行中", "修复中", "开发中", "分析中", "确认",
+		"处理中", "处理", "初审中", "初审", "接收", "接受", "指派", "开始", "进行中", "修复中", "开发中", "分析中", "确认",
 		"progress", "start", "accept", "assign", "handle", "confirm",
 	}
 
-	const maxSteps = 3
+	const maxSteps = 4
 	for step := 0; step < maxSteps; step++ {
 		transitions, err := client.GetTransitions(key)
 		if err != nil {
@@ -435,7 +435,7 @@ func autoTransition(client *jira.Client, key string, action string) error {
 			return nil
 		}
 
-		// 2. 如果当前状态无直接目标动作，则自动执行中间步骤（如 接收/处理）后继续
+		// 2. 如果当前状态无直接目标动作，则自动执行中间步骤（如 初审中 / 处理中）后继续下一步
 		targetStep := intermediateTrans
 		if targetStep == nil {
 			targetStep = &transitions[0]
@@ -457,6 +457,8 @@ func (h *IssueHandler) DoTransition(w http.ResponseWriter, r *http.Request) {
 		Action       string `json:"action,omitempty"` // "resolve" | "reject"
 		Assignee     string `json:"assignee,omitempty"`
 		Comment      string `json:"comment,omitempty"`
+		TimeSpent    string `json:"timeSpent,omitempty"`
+		WorkDate     string `json:"workDate,omitempty"`
 		AutoChain    bool   `json:"autoChain,omitempty"`
 	}
 
@@ -503,8 +505,12 @@ func (h *IssueHandler) DoTransition(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 添加可选备注
-	if comment := strings.TrimSpace(req.Comment); comment != "" {
+	// 登记可选工时（若有工时则附带备注作为 worklog 备注；否则单独添加 comment）
+	if timeSpent := strings.TrimSpace(req.TimeSpent); timeSpent != "" {
+		if err := client.AddWorklog(key, timeSpent, req.Comment, req.WorkDate); err != nil {
+			log.Printf("[WARN] 状态流转成功但登记工时失败 %s: %v", key, err)
+		}
+	} else if comment := strings.TrimSpace(req.Comment); comment != "" {
 		if err := client.AddComment(key, comment); err != nil {
 			log.Printf("[WARN] 状态流转成功但添加备注失败 %s: %v", key, err)
 		}
@@ -515,3 +521,122 @@ func (h *IssueHandler) DoTransition(w http.ResponseWriter, r *http.Request) {
 		"message": "状态流转成功",
 	})
 }
+
+func (h *IssueHandler) GetComments(w http.ResponseWriter, r *http.Request) {
+	key := r.PathValue("key")
+	if key == "" {
+		writeError(w, http.StatusBadRequest, "缺少 issue key")
+		return
+	}
+
+	client, err := jira.NewClient()
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	comments, err := client.GetComments(key)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "获取评论失败: "+err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"code": 0,
+		"data": comments,
+	})
+}
+
+func (h *IssueHandler) AddComment(w http.ResponseWriter, r *http.Request) {
+	key := r.PathValue("key")
+	if key == "" {
+		writeError(w, http.StatusBadRequest, "缺少 issue key")
+		return
+	}
+
+	var req struct {
+		Comment string `json:"comment"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "解析参数失败")
+		return
+	}
+
+	if strings.TrimSpace(req.Comment) == "" {
+		writeError(w, http.StatusBadRequest, "备注内容不能为空")
+		return
+	}
+
+	client, err := jira.NewClient()
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	if err := client.AddComment(key, req.Comment); err != nil {
+		writeError(w, http.StatusInternalServerError, "添加备注失败: "+err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"code":    0,
+		"message": "备注添加成功",
+	})
+}
+
+func (h *IssueHandler) UpdateWeeklyProgress(w http.ResponseWriter, r *http.Request) {
+	key := r.PathValue("key")
+	if key == "" {
+		writeError(w, http.StatusBadRequest, "缺少 issue key")
+		return
+	}
+
+	var req struct {
+		CurrentProgress  *int   `json:"currentProgress"`
+		LastWeekProgress *int   `json:"lastWeekProgress"`
+		ProgressStatus   string `json:"progressStatus"`
+		Comment          string `json:"comment"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "解析参数失败")
+		return
+	}
+
+	client, err := jira.NewClient()
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	fields := make(map[string]any)
+	if req.CurrentProgress != nil {
+		fields["customfield_10815"] = *req.CurrentProgress
+	}
+	if req.LastWeekProgress != nil {
+		fields["customfield_10814"] = *req.LastWeekProgress
+	}
+	if req.ProgressStatus != "" {
+		fields["customfield_10808"] = map[string]string{"value": req.ProgressStatus}
+	}
+
+	if len(fields) > 0 {
+		if err := client.UpdateIssue(key, fields); err != nil {
+			writeError(w, http.StatusInternalServerError, "更新进度字段失败: "+err.Error())
+			return
+		}
+	}
+
+	if strings.TrimSpace(req.Comment) != "" {
+		if err := client.AddComment(key, req.Comment); err != nil {
+			writeError(w, http.StatusInternalServerError, "更新成功但追加周报备注失败: "+err.Error())
+			return
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"code":    0,
+		"message": "周报进度更新成功",
+	})
+}
+

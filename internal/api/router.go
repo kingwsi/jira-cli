@@ -66,6 +66,9 @@ func NewRouter() http.Handler {
 	mux.HandleFunc("PATCH /api/v1/issues/{key}", issueH.UpdateIssue)
 	mux.HandleFunc("GET /api/v1/issues/{key}/transitions", issueH.GetTransitions)
 	mux.HandleFunc("POST /api/v1/issues/{key}/transitions", issueH.DoTransition)
+	mux.HandleFunc("GET /api/v1/issues/{key}/comments", issueH.GetComments)
+	mux.HandleFunc("POST /api/v1/issues/{key}/comments", issueH.AddComment)
+	mux.HandleFunc("POST /api/v1/issues/{key}/progress", issueH.UpdateWeeklyProgress)
 
 	// 4. 排期与规划
 	mux.HandleFunc("GET /api/v1/planning/tree", planH.GetPlanningTree)

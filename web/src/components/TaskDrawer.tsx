@@ -31,11 +31,14 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ issueKey, onClose, onUpd
   const [worklogComment, setWorklogComment] = useState('')
 
   useEffect(() => {
-    api.getConfig().then((cfg) => {
-      if (cfg && cfg.url) {
-        setJiraBaseUrl(cfg.url.replace(/\/+$/, ''))
-      }
-    }).catch(() => {})
+    api
+      .getConfig()
+      .then((cfg) => {
+        if (cfg && cfg.url) {
+          setJiraBaseUrl(cfg.url.replace(/\/+$/, ''))
+        }
+      })
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -438,3 +441,5 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ issueKey, onClose, onUpd
     </>
   )
 }
+
+export default TaskDrawer
