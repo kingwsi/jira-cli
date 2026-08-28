@@ -40,10 +40,12 @@ func corsMiddleware(next http.Handler) http.Handler {
 // NewRouter 创建并注册所有 API 路由以及静态资源托管
 func NewRouter() http.Handler {
 	mux := http.NewServeMux()
+	// Two fixed metadata entries plus at most 128 user-search query entries.
+	metadataCache := newMemoryCache(130)
 
-	cfgH := NewConfigHandler()
+	cfgH := NewConfigHandler(metadataCache)
 	issueH := NewIssueHandler()
-	planH := NewPlanningHandler()
+	planH := NewPlanningHandler(metadataCache)
 	workH := NewWorklogHandler()
 
 	// 1. 系统与配置
@@ -71,6 +73,7 @@ func NewRouter() http.Handler {
 	mux.HandleFunc("POST /api/v1/planning/batch", planH.BatchUpdateSchedule)
 
 	// 5. 工时
+	mux.HandleFunc("GET /api/v1/worklogs/week", workH.GetWorklogWeek)
 	mux.HandleFunc("GET /api/v1/worklogs/matrix", workH.GetWorklogMatrix)
 	mux.HandleFunc("POST /api/v1/worklogs", workH.AddWorklog)
 

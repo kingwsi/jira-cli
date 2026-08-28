@@ -3,6 +3,7 @@ import {
   PlanningTreeNode,
   SwimlaneMember,
   WorklogMatrixResponse,
+  WorklogWeekResponse,
   ServerConfig,
   Project,
   Transition,
@@ -91,13 +92,23 @@ export const api = {
     request<any[]>(`/users/search${query ? `?query=${encodeURIComponent(query)}` : ''}`),
 
   // Issues
-  getIssues: (params?: { type?: string; status?: string; assignee?: string; project?: string; jql?: string }) => {
+  getIssues: (params?: {
+    type?: string
+    status?: string
+    assignee?: string
+    project?: string
+    jql?: string
+    month?: string
+    summary?: string
+  }) => {
     const searchParams = new URLSearchParams()
     if (params?.type) searchParams.set('type', params.type)
     if (params?.status) searchParams.set('status', params.status)
     if (params?.assignee) searchParams.set('assignee', params.assignee)
     if (params?.project) searchParams.set('project', params.project)
     if (params?.jql) searchParams.set('jql', params.jql)
+    if (params?.month) searchParams.set('month', params.month)
+    if (params?.summary) searchParams.set('summary', params.summary)
     const query = searchParams.toString() ? `?${searchParams.toString()}` : ''
     return request<IssueItem[]>(`/issues${query}`)
   },
@@ -114,8 +125,24 @@ export const api = {
   updateIssue: (key: string, body: { summary?: string; description?: string; startDate?: string; endDate?: string; assignee?: string; originalEstimate?: string }) =>
     request<void>(`/issues/${key}`, { method: 'PATCH', body: JSON.stringify(body) }),
   getTransitions: (key: string) => request<Transition[]>(`/issues/${key}/transitions`),
-  doTransition: (key: string, transitionId: string) =>
-    request<void>(`/issues/${key}/transitions`, { method: 'POST', body: JSON.stringify({ transitionId }) }),
+  doTransition: (params: {
+    key: string
+    transitionId?: string
+    action?: 'resolve' | 'reject'
+    assignee?: string
+    comment?: string
+    autoChain?: boolean
+  }) =>
+    request<void>(`/issues/${params.key}/transitions`, {
+      method: 'POST',
+      body: JSON.stringify({
+        transitionId: params.transitionId || params.action || 'auto',
+        action: params.action || 'resolve',
+        assignee: params.assignee || undefined,
+        comment: params.comment ? params.comment.trim() : undefined,
+        autoChain: params.autoChain ?? true,
+      }),
+    }),
 
   // Planning
   getPlanningTree: (params?: { month?: string; project?: string; assignee?: string; includeSiblings?: boolean }) => {
@@ -145,6 +172,13 @@ export const api = {
     if (author) searchParams.set('author', author)
     const query = searchParams.toString() ? `?${searchParams.toString()}` : ''
     return request<WorklogMatrixResponse>(`/worklogs/matrix${query}`)
+  },
+  getWorklogWeek: (start?: string, author?: string) => {
+    const searchParams = new URLSearchParams()
+    if (start) searchParams.set('start', start)
+    if (author) searchParams.set('author', author)
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : ''
+    return request<WorklogWeekResponse>(`/worklogs/week${query}`)
   },
   addWorklog: (body: { issueKey: string; timeSpent: string; started?: string; comment?: string }) =>
     request<void>('/worklogs', { method: 'POST', body: JSON.stringify(body) }),

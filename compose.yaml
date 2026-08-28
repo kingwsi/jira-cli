@@ -1,0 +1,21 @@
+services:
+  jira-workbench:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: jira-workbench:local
+    container_name: jira-workbench
+    restart: unless-stopped
+    ports:
+      - "${JIRA_PORT:-9000}:8080"
+    volumes:
+      - jira-workbench-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  jira-workbench-data:

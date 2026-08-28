@@ -418,3 +418,122 @@
     transform: translateY(0) scale(1);
   }
 }
+
+/* ==========================================================================
+   Worklog Matrix (与甘特架构同源：Sticky 左列 + 日期格 + 核对状态行)
+   ========================================================================== */
+
+/* 每日填报核对状态行 (对应规划页的每日工时压力行) */
+[data-ui="gantt-review-row"] {
+  display: flex;
+  height: 30px;
+  background-color: #fafbfc;
+}
+
+[data-ui="gantt-review-row"] [data-ui="gantt-title-col"] {
+  z-index: 35;
+  background-color: #fafbfc;
+  font-weight: 500;
+  font-size: 11px;
+  color: var(--text-secondary);
+  justify-content: space-between;
+  padding: 0 12px;
+}
+
+[data-ui="gantt-review-col"] {
+  flex-shrink: 0;
+  border-right: 1px solid rgba(9, 30, 66, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+[data-ui="gantt-review-col"]:hover {
+  background-color: #e9f2ff !important;
+}
+
+[data-ui="gantt-review-col"].weekend,
+[data-ui="gantt-review-col"].holiday {
+  cursor: default;
+}
+
+[data-ui="gantt-review-col"].holiday {
+  background-color: rgba(222, 53, 11, 0.03);
+}
+
+[data-ui="gantt-review-col"].transfer-workday {
+  background-color: rgba(255, 139, 0, 0.03);
+}
+
+[data-ui="gantt-review-col"].today {
+  background-color: rgba(0, 82, 204, 0.04);
+}
+
+.review-status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: calc(100% - 8px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+  border: 1px solid transparent;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  letter-spacing: -0.2px;
+  text-transform: none;
+}
+
+/* 数据行右侧工时格子 */
+[data-ui="gantt-log-cell"] {
+  flex-shrink: 0;
+  height: 100%;
+  border-right: 1px solid rgba(9, 30, 66, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+[data-ui="gantt-log-cell"]:hover {
+  background-color: #e9f2ff !important;
+  outline: 1px dashed rgba(0, 82, 204, 0.35);
+  outline-offset: -1px;
+}
+
+[data-ui="gantt-log-cell"].weekend {
+  background-color: rgba(9, 30, 66, 0.02);
+}
+
+[data-ui="gantt-log-cell"].holiday {
+  background-color: rgba(255, 86, 48, 0.04);
+}
+
+[data-ui="gantt-log-cell"].transfer-workday {
+  background-color: rgba(255, 171, 0, 0.04);
+}
+
+[data-ui="gantt-log-cell"].today {
+  background-color: rgba(0, 82, 204, 0.04);
+  border-left: 1px dashed rgba(0, 82, 204, 0.3);
+}
+
+/* 当日合计行 */
+[data-ui="gantt-log-cell"].total-cell {
+  cursor: default;
+}
+
+[data-ui="gantt-log-cell"].total-cell:hover {
+  background-color: transparent !important;
+  outline: none;
+}

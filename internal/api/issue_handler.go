@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -99,9 +100,11 @@ func (h *IssueHandler) ListIssues(w http.ResponseWriter, r *http.Request) {
 	statusCategory := query.Get("statusCategory")
 	assignee := query.Get("assignee")
 	project := query.Get("project")
+	month := query.Get("month")
+	summary := query.Get("summary")
 	limitStr := query.Get("limit")
 
-	limit := 100
+	limit := 200
 	if limitStr != "" {
 		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
 			limit = l
@@ -113,6 +116,14 @@ func (h *IssueHandler) ListIssues(w http.ResponseWriter, r *http.Request) {
 		var conditions []string
 		if project != "" {
 			conditions = append(conditions, fmt.Sprintf("project = '%s'", project))
+		}
+		// 按照团队规范：标题必须包含对应月份编码（例如 "202608"）
+		if month != "" && month != "all" {
+			monthCode := strings.ReplaceAll(month, "-", "")
+			conditions = append(conditions, fmt.Sprintf("summary ~ '%s'", monthCode))
+		}
+		if summary != "" {
+			conditions = append(conditions, fmt.Sprintf("summary ~ '%s'", summary))
 		}
 		if issueType != "" {
 			resolvedType := resolveIssueType(client, issueType)
@@ -137,7 +148,7 @@ func (h *IssueHandler) ListIssues(w http.ResponseWriter, r *http.Request) {
 				conditions = append(conditions, "statusCategory = 'To Do'")
 			case "进行中", "In Progress", "修复中", "处理中", "接受/处理":
 				conditions = append(conditions, "statusCategory = 'In Progress'")
-			case "已解决", "已完成", "已关闭", "Done", "Closed", "Resolved":
+			case "已解决", "已完成", "已实现", "已关闭", "已发布", "已验收", "Done", "Closed", "Resolved", "Implemented":
 				conditions = append(conditions, "statusCategory = 'Done'")
 			case "待处理", "未解决", "unresolved":
 				conditions = append(conditions, "statusCategory in ('To Do', 'In Progress')")
@@ -368,14 +379,89 @@ func (h *IssueHandler) GetTransitions(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func isMatchingKeywords(name string, keywords []string) bool {
+	name = strings.ToLower(name)
+	for _, kw := range keywords {
+		if strings.Contains(name, strings.ToLower(kw)) {
+			return true
+		}
+	}
+	return false
+}
+
+func autoTransition(client *jira.Client, key string, action string) error {
+	action = strings.ToLower(action)
+	var targetKeywords []string
+	if action == "reject" || action == "拒绝" {
+		targetKeywords = []string{"拒绝", "非缺陷", "不予解决", "无法重现", "重复", "关闭", "reject", "rejected", "won't fix", "invalid", "duplicate", "close", "closed", "cannot reproduce"}
+	} else {
+		targetKeywords = []string{"解决", "已解决", "完成", "关闭", "resolve", "resolved", "done", "close", "fixed"}
+	}
+
+	intermediateKeywords := []string{
+		"接收", "接受", "指派", "处理", "开始", "进行中", "修复中", "开发中", "分析中", "确认",
+		"progress", "start", "accept", "assign", "handle", "confirm",
+	}
+
+	const maxSteps = 3
+	for step := 0; step < maxSteps; step++ {
+		transitions, err := client.GetTransitions(key)
+		if err != nil {
+			return fmt.Errorf("获取流转选项失败: %w", err)
+		}
+		if len(transitions) == 0 {
+			return fmt.Errorf("当前状态没有可用的流转操作")
+		}
+
+		// 1. 查找是否可以直接流转为目标状态
+		var targetTrans *jira.Transition
+		var intermediateTrans *jira.Transition
+
+		for i := range transitions {
+			t := &transitions[i]
+			if isMatchingKeywords(t.Name, targetKeywords) || isMatchingKeywords(t.To.Name, targetKeywords) {
+				targetTrans = t
+				break
+			}
+			if intermediateTrans == nil && (isMatchingKeywords(t.Name, intermediateKeywords) || isMatchingKeywords(t.To.Name, intermediateKeywords)) {
+				intermediateTrans = t
+			}
+		}
+
+		if targetTrans != nil {
+			if err := client.DoTransition(key, targetTrans.ID); err != nil {
+				return fmt.Errorf("流转至 %s 失败: %w", targetTrans.Name, err)
+			}
+			return nil
+		}
+
+		// 2. 如果当前状态无直接目标动作，则自动执行中间步骤（如 接收/处理）后继续
+		targetStep := intermediateTrans
+		if targetStep == nil {
+			targetStep = &transitions[0]
+		}
+
+		log.Printf("[INFO] 自动执行中间流转步骤 %s -> %s (ID: %s)", key, targetStep.Name, targetStep.ID)
+		if err := client.DoTransition(key, targetStep.ID); err != nil {
+			return fmt.Errorf("执行中间流转 %s 失败: %w", targetStep.Name, err)
+		}
+	}
+
+	return fmt.Errorf("未能一步流转到目标状态，请检查工作流")
+}
+
 func (h *IssueHandler) DoTransition(w http.ResponseWriter, r *http.Request) {
 	key := r.PathValue("key")
 	var req struct {
 		TransitionID string `json:"transitionId"`
+		Action       string `json:"action,omitempty"` // "resolve" | "reject"
+		Assignee     string `json:"assignee,omitempty"`
+		Comment      string `json:"comment,omitempty"`
+		AutoChain    bool   `json:"autoChain,omitempty"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.TransitionID == "" {
-		writeError(w, http.StatusBadRequest, "缺少 transitionId")
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "解析请求参数失败")
 		return
 	}
 
@@ -385,9 +471,43 @@ func (h *IssueHandler) DoTransition(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := client.DoTransition(key, req.TransitionID); err != nil {
-		writeError(w, http.StatusInternalServerError, "流转状态失败: "+err.Error())
-		return
+	action := req.Action
+	if action == "" {
+		if req.TransitionID == "reject" || req.TransitionID == "拒绝" {
+			action = "reject"
+		} else {
+			action = "resolve"
+		}
+	}
+
+	// 支持一步完成多步流转（先接收再解决/拒绝）
+	if req.AutoChain || req.TransitionID == "auto" || req.TransitionID == "resolve" || req.TransitionID == "reject" || req.TransitionID == "" {
+		if err := autoTransition(client, key, action); err != nil {
+			writeError(w, http.StatusInternalServerError, "一键流转失败: "+err.Error())
+			return
+		}
+	} else {
+		if err := client.DoTransition(key, req.TransitionID); err != nil {
+			writeError(w, http.StatusInternalServerError, "流转状态失败: "+err.Error())
+			return
+		}
+	}
+
+	// 更新经办人
+	if req.Assignee != "" {
+		fields := map[string]any{
+			"assignee": map[string]string{"name": req.Assignee},
+		}
+		if err := client.UpdateIssue(key, fields); err != nil {
+			log.Printf("[WARN] 状态流转成功但更新经办人失败 %s: %v", key, err)
+		}
+	}
+
+	// 添加可选备注
+	if comment := strings.TrimSpace(req.Comment); comment != "" {
+		if err := client.AddComment(key, comment); err != nil {
+			log.Printf("[WARN] 状态流转成功但添加备注失败 %s: %v", key, err)
+		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{

@@ -16,6 +16,7 @@ import {
 import { api } from '../api/client'
 import { PlanningTreeNode } from '../types'
 import { TaskDrawer } from '../components/TaskDrawer'
+import { PlanningSkeleton } from '../components/Skeleton'
 import { DayHolidayInfo, getMonthDaysWithHolidays, syncHolidaysFromRemote } from '../utils/holidays'
 
 export interface DailyWorkloadTask {
@@ -1279,8 +1280,8 @@ export const PlanningPage: React.FC = () => {
 
           {/* 数据行渲染 */}
           {loading ? (
-            <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
-              加载排期数据中...
+            <div style={{ padding: '12px' }}>
+              <PlanningSkeleton />
             </div>
           ) : (
             <>

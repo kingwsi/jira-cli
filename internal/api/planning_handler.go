@@ -5,16 +5,24 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/ws/jira-cli/internal/jira"
 	"github.com/ws/jira-cli/internal/models"
 	"github.com/ws/jira-cli/internal/services"
 )
 
-type PlanningHandler struct{}
+const (
+	projectsCacheTTL   = 30 * time.Minute
+	userSearchCacheTTL = 10 * time.Minute
+)
 
-func NewPlanningHandler() *PlanningHandler {
-	return &PlanningHandler{}
+type PlanningHandler struct {
+	cache *memoryCache
+}
+
+func NewPlanningHandler(cache *memoryCache) *PlanningHandler {
+	return &PlanningHandler{cache: cache}
 }
 
 func (h *PlanningHandler) GetPlanningTree(w http.ResponseWriter, r *http.Request) {
@@ -206,6 +214,14 @@ func (h *PlanningHandler) BatchUpdateSchedule(w http.ResponseWriter, r *http.Req
 }
 
 func (h *PlanningHandler) ListProjects(w http.ResponseWriter, r *http.Request) {
+	if cached, ok := h.cache.Get("projects"); ok {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"code": 0,
+			"data": cached,
+		})
+		return
+	}
+
 	client, err := jira.NewClient()
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, err.Error())
@@ -217,6 +233,7 @@ func (h *PlanningHandler) ListProjects(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "获取项目列表失败: "+err.Error())
 		return
 	}
+	h.cache.Set("projects", projects, projectsCacheTTL)
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"code": 0,
@@ -244,18 +261,31 @@ func (h *PlanningHandler) GetCurrentUser(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *PlanningHandler) SearchUsers(w http.ResponseWriter, r *http.Request) {
+	query := strings.TrimSpace(r.URL.Query().Get("query"))
+	cacheKey := "users:" + strings.ToLower(query)
+	if cached, ok := h.cache.Get(cacheKey); ok {
+		if users, typeOK := cached.([]jira.User); typeOK {
+			writeJSON(w, http.StatusOK, map[string]any{
+				"code":  0,
+				"total": len(users),
+				"data":  users,
+			})
+			return
+		}
+	}
+
 	client, err := jira.NewClient()
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, err.Error())
 		return
 	}
 
-	query := r.URL.Query().Get("query")
 	users, err := client.SearchUsers(query)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "搜索用户失败: "+err.Error())
 		return
 	}
+	h.cache.Set(cacheKey, users, userSearchCacheTTL)
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"code":  0,

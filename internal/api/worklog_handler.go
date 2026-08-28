@@ -122,6 +122,78 @@ func (h *WorklogHandler) GetWorklogMatrix(w http.ResponseWriter, r *http.Request
 	})
 }
 
+// GetWorklogWeek 返回指定一周 (周一 ~ 周日) 的工时填报视图
+func (h *WorklogHandler) GetWorklogWeek(w http.ResponseWriter, r *http.Request) {
+	client, err := jira.NewClient()
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	weekStartStr := r.URL.Query().Get("start")
+	if weekStartStr == "" {
+		now := time.Now()
+		offset := (int(now.Weekday()) + 6) % 7
+		monday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, -offset)
+		weekStartStr = monday.Format("2006-01-02")
+	}
+	weekStartTime, err := time.ParseInLocation("2006-01-02", weekStartStr, time.Local)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "无效的 start 参数，期望格式 YYYY-MM-DD")
+		return
+	}
+	weekEndStr := weekStartTime.AddDate(0, 0, 6).Format("2006-01-02")
+
+	author := r.URL.Query().Get("author")
+	if author == "" {
+		author = "currentUser()"
+	}
+
+	var jql string
+	if author == "all" || author == "*" {
+		jql = fmt.Sprintf("worklogDate >= '%s' AND worklogDate <= '%s' ORDER BY updated DESC", weekStartStr, weekEndStr)
+	} else if author == "currentUser()" || author == "me" {
+		jql = fmt.Sprintf("worklogAuthor = currentUser() AND worklogDate >= '%s' AND worklogDate <= '%s' ORDER BY updated DESC", weekStartStr, weekEndStr)
+	} else {
+		jql = fmt.Sprintf("worklogAuthor = '%s' AND worklogDate >= '%s' AND worklogDate <= '%s' ORDER BY updated DESC", author, weekStartStr, weekEndStr)
+	}
+
+	resp, err := client.Search(jql, 100)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "查询工时任务失败: "+err.Error())
+		return
+	}
+
+	var currentUser *jira.User
+	if author == "currentUser()" || author == "me" {
+		currentUser, _ = client.GetCurrentUser()
+	}
+
+	svc := services.NewPlanningService(client, "", "")
+	var issues []models.IssueItem
+	var allWorklogs []jira.Worklog
+
+	for _, raw := range resp.Issues {
+		issues = append(issues, svc.ConvertIssue(raw))
+		logs, err := client.GetWorklogs(raw.Key)
+		if err == nil {
+			for _, log := range logs {
+				if isMatchingWorklogAuthor(log, currentUser, author) {
+					log.IssueKey = raw.Key
+					allWorklogs = append(allWorklogs, log)
+				}
+			}
+		}
+	}
+
+	view := svc.BuildWorklogWeekView(weekStartStr, allWorklogs, issues)
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"code": 0,
+		"data": view,
+	})
+}
+
 func (h *WorklogHandler) AddWorklog(w http.ResponseWriter, r *http.Request) {
 	var req models.AddWorklogRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

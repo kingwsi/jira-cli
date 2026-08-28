@@ -70,6 +70,30 @@ make build
 
 ---
 
+## 🐳 Docker Compose 部署
+
+```bash
+# 构建镜像并在后台启动
+docker compose up -d --build
+
+# 查看运行状态和日志
+docker compose ps
+docker compose logs -f jira-workbench
+
+# 停止服务（保留 Jira 配置）
+docker compose down
+```
+
+默认访问地址为 `http://localhost:9000`。如需修改宿主机端口：
+
+```bash
+JIRA_PORT=8080 docker compose up -d --build
+```
+
+Jira 连接配置保存在 Docker 命名卷 `jira-workbench-data` 中，重新创建容器不会丢失。若要连同配置一起删除，可执行 `docker compose down -v`。
+
+---
+
 ## 📄 开源协议
 
 [MIT License](LICENSE)

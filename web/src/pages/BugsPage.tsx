@@ -3,6 +3,8 @@ import { Bug, RotateCcw, Search, User, ExternalLink, AlertTriangle, CheckCircle2
 import { api } from '../api/client'
 import { IssueItem } from '../types'
 import { TaskDrawer } from '../components/TaskDrawer'
+import { QuickResolveModal } from '../components/QuickResolveModal'
+import { TableSkeleton } from '../components/Skeleton'
 
 export const BugsPage: React.FC = () => {
   const [bugs, setBugs] = useState<IssueItem[]>([])
@@ -12,6 +14,8 @@ export const BugsPage: React.FC = () => {
   const [assigneeFilter, setAssigneeFilter] = useState('currentUser()')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  const [resolvingIssue, setResolvingIssue] = useState<IssueItem | null>(null)
+  const [resolvingAnchorRect, setResolvingAnchorRect] = useState<DOMRect | null>(null)
   const [jiraUrl, setJiraUrl] = useState('')
 
   useEffect(() => {
@@ -192,11 +196,7 @@ export const BugsPage: React.FC = () => {
       )}
 
       {/* 加载状态 */}
-      {loading && (
-        <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
-          正在加载缺陷列表中...
-        </div>
-      )}
+      {loading && <TableSkeleton rows={6} />}
 
       {/* 缺陷表格 */}
       {!loading && !error && (
@@ -211,7 +211,7 @@ export const BugsPage: React.FC = () => {
                 <th style={{ width: '120px' }}>经办人</th>
                 <th style={{ width: '110px' }}>报告人</th>
                 <th style={{ width: '120px' }}>预计解决</th>
-                <th style={{ width: '80px', textAlign: 'center' }}>操作</th>
+                <th style={{ width: '90px', textAlign: 'center' }}>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -222,8 +222,29 @@ export const BugsPage: React.FC = () => {
                   onClick={() => setSelectedKey(item.key)}
                 >
                   <td>
-                    <span style={{ fontWeight: 700, color: 'var(--color-danger)' }}>
-                      {item.key}
+                    <span
+                      onClick={(e) => openJira(item.key, e)}
+                      title={`点击在 Jira 官方系统中打开 ${item.key}`}
+                      style={{
+                        fontWeight: 700,
+                        color: 'var(--color-danger)',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        textDecoration: 'underline',
+                        textDecorationColor: 'transparent',
+                        transition: 'text-decoration-color 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.textDecorationColor = 'var(--color-danger)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.textDecorationColor = 'transparent'
+                      }}
+                    >
+                      <span>{item.key}</span>
+                      <ExternalLink size={11} style={{ opacity: 0.6 }} />
                     </span>
                   </td>
                   <td>
@@ -276,20 +297,56 @@ export const BugsPage: React.FC = () => {
                   <td style={{ color: 'var(--color-warning)', fontSize: '12px', fontWeight: 500 }}>
                     {item.endDate || '-'}
                   </td>
-                  <td style={{ textAlign: 'center' }}>
-                    {jiraUrl ? (
+                  <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                    {item.statusCategory !== 'Done' ? (
                       <button
                         data-ui="button"
-                        data-variant="ghost"
+                        data-variant="primary"
                         data-size="sm"
-                        onClick={(e) => openJira(item.key, e)}
-                        title={`在 Jira 官方系统中打开 ${item.key}`}
-                        style={{ padding: '3px 6px' }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          const rect = e.currentTarget.getBoundingClientRect()
+                          setResolvingAnchorRect(rect)
+                          setResolvingIssue(item)
+                        }}
+                        title="快捷流转并指派给创建人"
+                        style={{
+                          padding: '3px 8px',
+                          fontSize: '12px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          backgroundColor: 'var(--color-success)',
+                          borderColor: 'var(--color-success)',
+                          color: '#fff',
+                        }}
                       >
-                        <ExternalLink size={13} />
+                        <CheckCircle2 size={13} />
+                        <span>已解决</span>
                       </button>
                     ) : (
-                      <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>-</span>
+                      <button
+                        data-ui="button"
+                        data-variant="secondary"
+                        data-size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          const rect = e.currentTarget.getBoundingClientRect()
+                          setResolvingAnchorRect(rect)
+                          setResolvingIssue(item)
+                        }}
+                        title="变更流转状态或指派人员"
+                        style={{
+                          padding: '3px 8px',
+                          fontSize: '12px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                      >
+                        <CheckCircle2 size={13} color="var(--color-success)" />
+                        <span>流转</span>
+                      </button>
                     )}
                   </td>
                 </tr>
@@ -306,6 +363,18 @@ export const BugsPage: React.FC = () => {
           </table>
         </div>
       )}
+
+      {/* 快捷解决与流转轻量弹窗 */}
+      <QuickResolveModal
+        isOpen={Boolean(resolvingIssue)}
+        issue={resolvingIssue}
+        anchorRect={resolvingAnchorRect}
+        onClose={() => {
+          setResolvingIssue(null)
+          setResolvingAnchorRect(null)
+        }}
+        onResolved={loadBugs}
+      />
 
       {/* 详情抽屉 */}
       <TaskDrawer

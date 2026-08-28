@@ -145,6 +145,83 @@ function applyHolidayDays(year: number, days: HolidayCnDay[]) {
   holidayCache[year] = { statutory, transfer }
 }
 
+/** 本地时区日期格式化 YYYY-MM-DD (避免 toISOString 的 UTC 偏移问题) */
+export function formatLocalDate(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function resolveHolidayMaps(year: number): { statutory: Record<string, string>; transfer: Record<string, string> } {
+  if (holidayCache[year]) return holidayCache[year]
+  // 内存中未初始化该年份时，尝试从 localStorage 恢复
+  try {
+    const saved = localStorage.getItem(`holiday_cn_${year}`)
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      if (parsed?.days) applyHolidayDays(year, parsed.days)
+    }
+  } catch (_) {}
+  if (holidayCache[year]) return holidayCache[year]
+  return { statutory: FALLBACK_STATUTORY, transfer: FALLBACK_TRANSFER }
+}
+
+/**
+ * 获取单个日期的节日/调休元数据
+ */
+export function getDayHolidayInfo(dateObj: Date): DayHolidayInfo {
+  const year = dateObj.getFullYear()
+  const dateStr = formatLocalDate(dateObj)
+  const dayOfWeek = dateObj.getDay() // 0=日, 6=六
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+  const isToday = dateStr === formatLocalDate(new Date())
+
+  const { statutory, transfer } = resolveHolidayMaps(year)
+  const holidayName = statutory[dateStr]
+  const isHoliday = !!holidayName
+  const isTransferWorkday = !!transfer[dateStr]
+
+  // 实际工作日判定：
+  // 1. 周末调休补班 -> 属于工作日
+  // 2. 法定假日放假 -> 不属于工作日
+  // 3. 其他情况：非周末为工作日，周末为非工作日
+  let isWorkday = !isWeekend
+  if (isTransferWorkday) {
+    isWorkday = true
+  } else if (isHoliday) {
+    isWorkday = false
+  }
+
+  return {
+    dateStr,
+    day: dateObj.getDate(),
+    dayOfWeek,
+    isWeekend,
+    isToday,
+    isWorkday,
+    isHoliday,
+    isTransferWorkday,
+    holidayName: holidayName || (isTransferWorkday ? transfer[dateStr] : undefined),
+  }
+}
+
+/**
+ * 获取从 startStr 起连续 numDays 天的日期元数据 (支持跨月/跨年，如周视图)
+ * @param startStr 起始日期 YYYY-MM-DD
+ */
+export function getRangeDaysWithHolidays(startStr: string, numDays: number): DayHolidayInfo[] {
+  const [y, m, d] = startStr.split('-').map(Number)
+  if (!y || !m || !d) return []
+
+  const result: DayHolidayInfo[] = []
+  for (let i = 0; i < numDays; i++) {
+    const dateObj = new Date(y, m - 1, d + i)
+    result.push(getDayHolidayInfo(dateObj))
+  }
+  return result
+}
+
 /**
  * 获取指定月份的所有日期元数据
  */
@@ -154,58 +231,5 @@ export function getMonthDaysWithHolidays(yearMonthStr: string): DayHolidayInfo[]
   const month = parseInt(monthStr, 10) // 1-12
   const totalDays = new Date(year, month, 0).getDate()
 
-  const todayStr = new Date().toISOString().split('T')[0]
-  const result: DayHolidayInfo[] = []
-
-  // 如果内存中还没有初始化该年份数据，尝试从 localStorage 读取
-  if (!holidayCache[year]) {
-    const saved = localStorage.getItem(`holiday_cn_${year}`)
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved)
-        if (parsed?.days) applyHolidayDays(year, parsed.days)
-      } catch (_) {}
-    }
-  }
-
-  const cached = holidayCache[year]
-  const statutoryMap = cached ? cached.statutory : FALLBACK_STATUTORY
-  const transferMap = cached ? cached.transfer : FALLBACK_TRANSFER
-
-  for (let d = 1; d <= totalDays; d++) {
-    const dateObj = new Date(year, month - 1, d)
-    const dateStr = `${yearMonthStr}-${String(d).padStart(2, '0')}`
-    const dayOfWeek = dateObj.getDay() // 0=日, 6=六
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-    const isToday = dateStr === todayStr
-
-    const holidayName = statutoryMap[dateStr]
-    const isHoliday = !!holidayName
-    const isTransferWorkday = !!transferMap[dateStr]
-
-    // 实际工作日判定：
-    // 1. 周末调休补班 -> 属于工作日
-    // 2. 法定假日放假 -> 不属于工作日
-    // 3. 其他情况：非周末为工作日，周末为非工作日
-    let isWorkday = !isWeekend
-    if (isTransferWorkday) {
-      isWorkday = true
-    } else if (isHoliday) {
-      isWorkday = false
-    }
-
-    result.push({
-      dateStr,
-      day: d,
-      dayOfWeek,
-      isWeekend,
-      isToday,
-      isWorkday,
-      isHoliday,
-      isTransferWorkday,
-      holidayName: holidayName || (isTransferWorkday ? transferMap[dateStr] : undefined),
-    })
-  }
-
-  return result
+  return getRangeDaysWithHolidays(`${yearMonthStr}-01`, totalDays)
 }

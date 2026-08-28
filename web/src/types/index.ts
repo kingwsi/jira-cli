@@ -86,6 +86,22 @@ export interface WorklogMatrixResponse {
   rows: WorklogMatrixRow[]
 }
 
+export interface WorklogWeekDay {
+  date: string // YYYY-MM-DD
+  weekday: number // 0=周日, 1=周一 ... 6=周六
+  isToday: boolean
+  isPast: boolean
+}
+
+export interface WorklogWeekResponse {
+  weekStart: string // YYYY-MM-DD 周一
+  weekEnd: string // YYYY-MM-DD 周日
+  days: WorklogWeekDay[]
+  totalSpentSeconds: number
+  dailyTotalsSeconds: Record<string, number>
+  rows: WorklogMatrixRow[]
+}
+
 export interface ServerConfig {
   url: string
   username: string

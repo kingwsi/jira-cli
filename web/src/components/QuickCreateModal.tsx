@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import { api } from '../api/client'
 import { Project } from '../types'
+import { DatePicker } from './DatePicker'
 
 interface QuickCreateModalProps {
   isOpen: boolean
@@ -132,21 +133,21 @@ export const QuickCreateModal: React.FC<QuickCreateModalProps> = ({ isOpen, onCl
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div data-ui="form-group">
                 <label data-ui="form-label">预计开始日期</label>
-                <input
-                  type="date"
-                  data-ui="input"
+                <DatePicker
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={setStartDate}
+                  placeholder="选择预计开始日期"
+                  isClearable
                 />
               </div>
 
               <div data-ui="form-group">
                 <label data-ui="form-label">预计完成日期</label>
-                <input
-                  type="date"
-                  data-ui="input"
+                <DatePicker
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  onChange={setEndDate}
+                  placeholder="选择预计完成日期"
+                  isClearable
                 />
               </div>
             </div>

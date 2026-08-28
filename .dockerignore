@@ -1,0 +1,15 @@
+.git
+.gitignore
+.DS_Store
+.env
+.env.*
+!.env.example
+web/node_modules
+web/dist
+internal/web/dist
+node_modules
+dist
+*.log
+jira
+jira-cli
+jcli

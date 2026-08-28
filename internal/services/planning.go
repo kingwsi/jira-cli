@@ -94,6 +94,15 @@ func (s *PlanningService) EnrichWithParentAndSiblingTasks(initialItems []models.
 
 // ConvertIssue 将 Jira 原始 Issue 转换为系统内部通用的 IssueItem
 func (s *PlanningService) ConvertIssue(raw jira.Issue) models.IssueItem {
+	timeSpent := raw.Fields.TimeSpent
+	if timeSpent == 0 && raw.Fields.AggregateTimeSpent > 0 {
+		timeSpent = raw.Fields.AggregateTimeSpent
+	}
+	origEst := raw.Fields.TimeOriginalEstimate
+	if origEst == 0 && raw.Fields.AggregateTimeOriginalEstimate > 0 {
+		origEst = raw.Fields.AggregateTimeOriginalEstimate
+	}
+
 	item := models.IssueItem{
 		Key:               raw.Key,
 		ID:                raw.ID,
@@ -103,9 +112,9 @@ func (s *PlanningService) ConvertIssue(raw jira.Issue) models.IssueItem {
 		IssueType:         raw.Fields.IssueType.Name,
 		Status:            raw.Fields.Status.Name,
 		Priority:          raw.Fields.Priority.Name,
-		OriginalEstimate:  raw.Fields.TimeOriginalEstimate,
+		OriginalEstimate:  origEst,
 		RemainingEstimate: raw.Fields.TimeEstimate,
-		TimeSpent:         raw.Fields.TimeSpent,
+		TimeSpent:         timeSpent,
 	}
 
 	if raw.Fields.Status.StatusCategory != nil {
@@ -528,6 +537,96 @@ func (s *PlanningService) BuildTeamSwimlanes(issues []models.IssueItem) []models
 	})
 
 	return result
+}
+
+// BuildWorklogWeekView 生成指定一周 (周一 ~ 周日) 的工时填报视图
+func (s *PlanningService) BuildWorklogWeekView(weekStartStr string, worklogs []jira.Worklog, issues []models.IssueItem) models.WorklogWeekResponse {
+	weekStart, err := time.ParseInLocation("2006-01-02", weekStartStr, time.Local)
+	if err != nil {
+		now := time.Now()
+		offset := (int(now.Weekday()) + 6) % 7 // 周一为一周起点
+		weekStart = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, -offset)
+	}
+	weekStart = time.Date(weekStart.Year(), weekStart.Month(), weekStart.Day(), 0, 0, 0, 0, time.Local)
+	weekEnd := weekStart.AddDate(0, 0, 6)
+	weekEndEndOfDay := weekEnd.AddDate(0, 0, 1)
+
+	today := time.Now()
+	yesterday := today.AddDate(0, 0, -1)
+	formatDay := func(t time.Time) string { return t.Format("2006-01-02") }
+
+	var days []models.WorklogWeekDay
+	for cur := weekStart; !cur.After(weekEnd); cur = cur.AddDate(0, 0, 1) {
+		days = append(days, models.WorklogWeekDay{
+			Date:    formatDay(cur),
+			Weekday: int(cur.Weekday()),
+			IsToday: formatDay(cur) == formatDay(today),
+			IsPast:  cur.Before(yesterday),
+		})
+	}
+
+	issueMap := make(map[string]models.IssueItem)
+	for _, it := range issues {
+		issueMap[it.Key] = it
+	}
+
+	rowsMap := make(map[string]*models.WorklogMatrixRow)
+	dailyTotals := make(map[string]int64)
+	var totalSpent int64
+
+	for _, wl := range worklogs {
+		if len(wl.Started) < 10 {
+			continue
+		}
+		startedDate := wl.Started[:10]
+		startedTime, err := time.ParseInLocation("2006-01-02", startedDate, time.Local)
+		if err != nil || startedTime.Before(weekStart) || !startedTime.Before(weekEndEndOfDay) {
+			continue
+		}
+
+		issueKey := wl.IssueKey
+		if issueKey == "" {
+			issueKey = "UNKNOWN"
+		}
+		row, exists := rowsMap[issueKey]
+		if !exists {
+			item := issueMap[issueKey]
+			assignee := "Unknown"
+			if item.Assignee != nil {
+				assignee = item.Assignee.DisplayName
+			}
+			row = &models.WorklogMatrixRow{
+				IssueKey:     issueKey,
+				IssueSummary: item.Summary,
+				IssueType:    item.IssueType,
+				AssigneeName: assignee,
+				DailySpent:   make(map[string]int64),
+			}
+			rowsMap[issueKey] = row
+		}
+
+		row.DailySpent[startedDate] += int64(wl.TimeSpentSeconds)
+		row.TotalSpent += int64(wl.TimeSpentSeconds)
+		dailyTotals[startedDate] += int64(wl.TimeSpentSeconds)
+		totalSpent += int64(wl.TimeSpentSeconds)
+	}
+
+	var rows []models.WorklogMatrixRow
+	for _, r := range rowsMap {
+		rows = append(rows, *r)
+	}
+	sort.Slice(rows, func(i, j int) bool {
+		return rows[i].TotalSpent > rows[j].TotalSpent
+	})
+
+	return models.WorklogWeekResponse{
+		WeekStart:   formatDay(weekStart),
+		WeekEnd:     formatDay(weekEnd),
+		Days:        days,
+		TotalSpent:  totalSpent,
+		DailyTotals: dailyTotals,
+		Rows:        rows,
+	}
 }
 
 // BuildWorklogMatrix 生成指定月份的工时填报矩阵

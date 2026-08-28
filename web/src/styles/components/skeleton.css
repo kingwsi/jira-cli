@@ -1,0 +1,48 @@
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+[data-ui="skeleton"] {
+  display: inline-block;
+  background: linear-gradient(
+    90deg,
+    rgba(9, 30, 66, 0.05) 25%,
+    rgba(9, 30, 66, 0.11) 37%,
+    rgba(9, 30, 66, 0.05) 63%
+  );
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 2.6s ease-in-out infinite;
+  border-radius: var(--radius-sm, 4px);
+  vertical-align: middle;
+}
+
+[data-ui="skeleton-pulse"] {
+  animation: skeleton-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* Skeleton Table Container */
+.skeleton-table-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle, rgba(9, 30, 66, 0.06));
+}
+
+.skeleton-table-row:last-child {
+  border-bottom: none;
+}

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { X, Clock, ArrowRight, ExternalLink, User } from 'lucide-react'
 import { IssueItem, Transition } from '../types'
 import { api } from '../api/client'
+import { DatePicker } from './DatePicker'
+import { DrawerSkeleton } from './Skeleton'
 
 interface TaskDrawerProps {
   issueKey: string | null
@@ -105,7 +107,7 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ issueKey, onClose, onUpd
     if (!issue) return
     setSaving(true)
     try {
-      await api.doTransition(issue.key, transId)
+      await api.doTransition({ key: issue.key, transitionId: transId })
       const [updated, newTrans] = await Promise.all([
         api.getIssue(issue.key),
         api.getTransitions(issue.key).catch(() => []),
@@ -191,11 +193,7 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ issueKey, onClose, onUpd
         </div>
 
         <div data-ui="drawer-body">
-          {loading && (
-            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-              加载任务详情中...
-            </div>
-          )}
+          {loading && <DrawerSkeleton />}
 
           {error && (
             <div style={{ padding: '20px', color: 'var(--color-danger)' }}>
@@ -264,21 +262,21 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ issueKey, onClose, onUpd
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                 <div data-ui="form-group">
                   <label data-ui="form-label">预计开始日期</label>
-                  <input
-                    type="date"
-                    data-ui="input"
+                  <DatePicker
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={setStartDate}
+                    placeholder="选择预计开始日期"
+                    isClearable
                   />
                 </div>
 
                 <div data-ui="form-group">
                   <label data-ui="form-label">预计完成日期</label>
-                  <input
-                    type="date"
-                    data-ui="input"
+                  <DatePicker
                     value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
+                    onChange={setEndDate}
+                    placeholder="选择预计完成日期"
+                    isClearable
                   />
                 </div>
               </div>

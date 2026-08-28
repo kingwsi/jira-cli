@@ -6,27 +6,27 @@ import (
 
 // IssueItem 代表前端统一展示的任务/缺陷模型
 type IssueItem struct {
-	Key              string      `json:"key"`
-	ID               string      `json:"id"`
-	ProjectKey       string      `json:"projectKey"`
-	Summary          string      `json:"summary"`
-	Description      string      `json:"description,omitempty"`
-	IssueType        string      `json:"issueType"` // Task, Bug, Story, Epic, Sub-task
-	Status           string      `json:"status"`
-	StatusCategory   string      `json:"statusCategory,omitempty"` // To Do, In Progress, Done
-	Priority         string      `json:"priority"`
-	Assignee         *UserInfo   `json:"assignee,omitempty"`
-	Reporter         *UserInfo   `json:"reporter,omitempty"`
-	ParentKey        string      `json:"parentKey,omitempty"`
-	ParentSummary    string      `json:"parentSummary,omitempty"`
-	StartDate        string      `json:"startDate,omitempty"` // YYYY-MM-DD
-	EndDate          string      `json:"endDate,omitempty"`   // YYYY-MM-DD
-	OriginalEstimate int64       `json:"originalEstimateSeconds"`
-	RemainingEstimate int64      `json:"remainingEstimateSeconds"`
-	TimeSpent        int64       `json:"timeSpentSeconds"`
-	CreatedAt        time.Time   `json:"createdAt"`
-	UpdatedAt        time.Time   `json:"updatedAt"`
-	Subtasks         []IssueItem `json:"subtasks,omitempty"`
+	Key               string      `json:"key"`
+	ID                string      `json:"id"`
+	ProjectKey        string      `json:"projectKey"`
+	Summary           string      `json:"summary"`
+	Description       string      `json:"description,omitempty"`
+	IssueType         string      `json:"issueType"` // Task, Bug, Story, Epic, Sub-task
+	Status            string      `json:"status"`
+	StatusCategory    string      `json:"statusCategory,omitempty"` // To Do, In Progress, Done
+	Priority          string      `json:"priority"`
+	Assignee          *UserInfo   `json:"assignee,omitempty"`
+	Reporter          *UserInfo   `json:"reporter,omitempty"`
+	ParentKey         string      `json:"parentKey,omitempty"`
+	ParentSummary     string      `json:"parentSummary,omitempty"`
+	StartDate         string      `json:"startDate,omitempty"` // YYYY-MM-DD
+	EndDate           string      `json:"endDate,omitempty"`   // YYYY-MM-DD
+	OriginalEstimate  int64       `json:"originalEstimateSeconds"`
+	RemainingEstimate int64       `json:"remainingEstimateSeconds"`
+	TimeSpent         int64       `json:"timeSpentSeconds"`
+	CreatedAt         time.Time   `json:"createdAt"`
+	UpdatedAt         time.Time   `json:"updatedAt"`
+	Subtasks          []IssueItem `json:"subtasks,omitempty"`
 }
 
 type UserInfo struct {
@@ -106,6 +106,24 @@ type WorklogMatrixResponse struct {
 	Month       string             `json:"month"` // YYYY-MM
 	DaysInMonth int                `json:"daysInMonth"`
 	TotalSpent  int64              `json:"totalSpentSeconds"`
+	Rows        []WorklogMatrixRow `json:"rows"`
+}
+
+// WorklogWeekDay 周视图中的单日基础信息
+type WorklogWeekDay struct {
+	Date    string `json:"date"`    // YYYY-MM-DD
+	Weekday int    `json:"weekday"` // 0=周日, 1=周一 ... 6=周六
+	IsToday bool   `json:"isToday"`
+	IsPast  bool   `json:"isPast"`
+}
+
+// WorklogWeekResponse 一周工时填报视图 (周一 ~ 周日)
+type WorklogWeekResponse struct {
+	WeekStart   string             `json:"weekStart"` // YYYY-MM-DD 周一
+	WeekEnd     string             `json:"weekEnd"`   // YYYY-MM-DD 周日
+	Days        []WorklogWeekDay   `json:"days"`
+	TotalSpent  int64              `json:"totalSpentSeconds"`
+	DailyTotals map[string]int64   `json:"dailyTotalsSeconds"` // date -> 当日合计秒数
 	Rows        []WorklogMatrixRow `json:"rows"`
 }
 

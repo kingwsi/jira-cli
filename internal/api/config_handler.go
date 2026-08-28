@@ -3,16 +3,21 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/ws/jira-cli/internal/auth"
 	"github.com/ws/jira-cli/internal/jira"
 	"github.com/ws/jira-cli/internal/models"
 )
 
-type ConfigHandler struct{}
+const fieldsCacheTTL = 24 * time.Hour
 
-func NewConfigHandler() *ConfigHandler {
-	return &ConfigHandler{}
+type ConfigHandler struct {
+	cache *memoryCache
+}
+
+func NewConfigHandler(cache *memoryCache) *ConfigHandler {
+	return &ConfigHandler{cache: cache}
 }
 
 func (h *ConfigHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
@@ -82,6 +87,7 @@ func (h *ConfigHandler) SaveConfig(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "保存配置失败: "+err.Error())
 		return
 	}
+	h.cache.Clear()
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"code":    0,
@@ -128,6 +134,14 @@ func (h *ConfigHandler) TestConnection(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ConfigHandler) GetFields(w http.ResponseWriter, r *http.Request) {
+	if cached, ok := h.cache.Get("fields"); ok {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"code": 0,
+			"data": cached,
+		})
+		return
+	}
+
 	client, err := jira.NewClient()
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, err.Error())
@@ -139,6 +153,7 @@ func (h *ConfigHandler) GetFields(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "获取 Jira 字段列表失败: "+err.Error())
 		return
 	}
+	h.cache.Set("fields", fields, fieldsCacheTTL)
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"code": 0,

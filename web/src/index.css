@@ -9,3 +9,5 @@
 @import './styles/components/dialog.css';
 @import './styles/components/status.css';
 @import './styles/components/timeline.css';
+@import './styles/components/datepicker.css';
+@import './styles/components/skeleton.css';

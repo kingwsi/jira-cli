@@ -115,10 +115,12 @@ type RawIssueFields struct {
 	Updated              string         `json:"updated"`
 	Labels               []string       `json:"labels,omitempty"`
 	Project              ProjectShort   `json:"project"`
-	TimeOriginalEstimate int64          `json:"timeoriginalestimate,omitempty"`
-	TimeEstimate         int64          `json:"timeestimate,omitempty"`
-	TimeSpent            int64          `json:"timespent,omitempty"`
-	ExpectedStart        string         `json:"customfield_10300,omitempty"`
+	TimeOriginalEstimate          int64          `json:"timeoriginalestimate,omitempty"`
+	AggregateTimeOriginalEstimate int64          `json:"aggregatetimeoriginalestimate,omitempty"`
+	TimeEstimate                  int64          `json:"timeestimate,omitempty"`
+	TimeSpent                     int64          `json:"timespent,omitempty"`
+	AggregateTimeSpent            int64          `json:"aggregatetimespent,omitempty"`
+	ExpectedStart                 string         `json:"customfield_10300,omitempty"`
 	ExpectedEnd          string         `json:"customfield_10301,omitempty"`
 	Parent               *ParentRef     `json:"parent,omitempty"`
 	Subtasks             []SubtaskRef   `json:"subtasks,omitempty"`
@@ -273,7 +275,7 @@ func (c *Client) Search(jql string, maxResults int) (*SearchResponse, error) {
 	fields := []string{
 		"summary", "description", "status", "issuetype", "priority",
 		"assignee", "reporter", "created", "updated", "project",
-		"timeoriginalestimate", "timeestimate", "timespent",
+		"timeoriginalestimate", "aggregatetimeoriginalestimate", "timeestimate", "timespent", "aggregatetimespent",
 		"customfield_10300", "customfield_10301",
 		"parent", "subtasks", "fixVersions",
 	}
@@ -399,6 +401,9 @@ func (c *Client) DoTransition(issueKey, transitionID string) error {
 func (c *Client) AddWorklog(issueKey, timeSpent, comment, started string) error {
 	if started == "" {
 		started = time.Now().Format("2006-01-02T15:04:05.000-0700")
+	} else if t, err := time.ParseInLocation("2006-01-02", started, time.Local); err == nil && len(started) == 10 {
+		// 仅传日期时，补充为 Jira 要求的完整时间戳格式 (当天 09:00 本地时间)
+		started = t.Format("2006-01-02") + "T09:00:00.000+0800"
 	}
 	data := map[string]interface{}{
 		"timeSpent": timeSpent,
@@ -412,6 +417,23 @@ func (c *Client) AddWorklog(issueKey, timeSpent, comment, started string) error 
 		SetBody(data).
 		Post("issue/" + issueKey + "/worklog")
 
+	if apiErr := c.handleResponse(resp, err); apiErr != nil {
+		return apiErr
+	}
+	return nil
+}
+
+func (c *Client) AddComment(issueKey, comment string) error {
+	comment = strings.TrimSpace(comment)
+	if comment == "" {
+		return nil
+	}
+	data := map[string]interface{}{
+		"body": comment,
+	}
+	resp, err := c.Client.R().
+		SetBody(data).
+		Post("issue/" + issueKey + "/comment")
 	if apiErr := c.handleResponse(resp, err); apiErr != nil {
 		return apiErr
 	}
