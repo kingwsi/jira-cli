@@ -6,7 +6,12 @@ import { TaskDrawer } from '../components/TaskDrawer'
 import { QuickResolveModal } from '../components/QuickResolveModal'
 import { TableSkeleton } from '../components/Skeleton'
 
-export const BugsPage: React.FC = () => {
+export interface BugsPageProps {
+  embedded?: boolean
+  onUnresolvedCountChange?: (count: number) => void
+}
+
+export const BugsPage: React.FC<BugsPageProps> = ({ embedded = false, onUnresolvedCountChange }) => {
   const [bugs, setBugs] = useState<IssueItem[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -37,7 +42,12 @@ export const BugsPage: React.FC = () => {
       assignee: assigneeFilter || undefined,
     })
       .then((data) => {
-        setBugs(data || [])
+        const list = data || []
+        setBugs(list)
+        if (onUnresolvedCountChange) {
+          const unres = list.filter((b) => b.statusCategory !== 'Done').length
+          onUnresolvedCountChange(unres)
+        }
       })
       .catch((err: any) => {
         console.error('加载缺陷失败:', err)
@@ -74,7 +84,7 @@ export const BugsPage: React.FC = () => {
   }
 
   return (
-    <div data-ui="page-content" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div data-ui={embedded ? undefined : 'page-content'} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       {/* 顶部工具栏 */}
       <div
         style={{

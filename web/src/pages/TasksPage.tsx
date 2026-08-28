@@ -2,18 +2,21 @@ import React, { useState, useEffect, useMemo } from 'react'
 import {
   ListTodo,
   List,
+  Bug,
   RotateCcw,
   Calendar,
   ChevronLeft,
   ChevronRight,
   Search,
   Clock,
+  ExternalLink,
 } from 'lucide-react'
 import { api } from '../api/client'
 import { IssueItem } from '../types'
 import { TaskDrawer } from '../components/TaskDrawer'
 import { WorklogDrawer } from '../components/WorklogDrawer'
 import { TableSkeleton } from '../components/Skeleton'
+import { BugsPage } from './BugsPage'
 
 /** 格式化本地日期 YYYY-MM-DD */
 function formatLocalDate(d: Date): string {
@@ -77,13 +80,33 @@ export const TasksPage: React.FC = () => {
   const [issues, setIssues] = useState<IssueItem[]>([])
   const [loading, setLoading] = useState(false)
   
-  // 视图模式：'todo' (本周任务-全部状态) | 'all' (本月全部任务-全部状态)
-  const [activeTab, setActiveTab] = useState<'todo' | 'all'>('todo')
+  // 视图模式：'todo' (本周待办) | 'bugs' (缺陷与问题) | 'all' (全部任务)
+  const [activeTab, setActiveTab] = useState<'todo' | 'bugs' | 'all'>('todo')
+  const [unresolvedBugsCount, setUnresolvedBugsCount] = useState(0)
   
   const [statusFilter, setStatusFilter] = useState('')
   const [assigneeFilter, setAssigneeFilter] = useState('currentUser()')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  const [jiraUrl, setJiraUrl] = useState('')
+
+  useEffect(() => {
+    api.getConfig()
+      .then((cfg) => {
+        if (cfg && cfg.url) {
+          setJiraUrl(cfg.url.replace(/\/+$/, ''))
+        }
+      })
+      .catch(() => {})
+
+    // 预拉取未解决缺陷数
+    api.getIssues({ type: 'Bug', status: '待处理', assignee: 'currentUser()' })
+      .then((res) => {
+        const count = (res || []).filter((b) => b.statusCategory !== 'Done').length
+        setUnresolvedBugsCount(count)
+      })
+      .catch(() => {})
+  }, [])
 
   // 快捷记工时抽屉状态
   const [worklogDrawerOpen, setWorklogDrawerOpen] = useState(false)
@@ -222,6 +245,12 @@ export const TasksPage: React.FC = () => {
   }, [displayIssues])
   const totalHoursStr = (totalEstimateSeconds / 3600).toFixed(1)
 
+  const openJira = (key: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!jiraUrl) return
+    window.open(`${jiraUrl}/browse/${key}`, '_blank', 'noopener,noreferrer')
+  }
+
   return (
     <div data-ui="page-content" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       {/* 顶部过滤工具栏 */}
@@ -235,7 +264,7 @@ export const TasksPage: React.FC = () => {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          {/* 待办 / 全部 切换按钮组 */}
+          {/* 待办 / 缺陷 / 全部 切换按钮组 */}
           <div data-ui="button-group">
             <button
               data-ui="button"
@@ -244,7 +273,7 @@ export const TasksPage: React.FC = () => {
               style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
               <ListTodo size={15} />
-              <span>待办</span>
+              <span>本周待办</span>
               <span
                 style={{
                   fontSize: '11px',
@@ -258,6 +287,40 @@ export const TasksPage: React.FC = () => {
                 {weekIssues.length}
               </span>
             </button>
+
+            <button
+              data-ui="button"
+              data-variant={activeTab === 'bugs' ? 'primary' : 'ghost'}
+              onClick={() => setActiveTab('bugs')}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Bug size={15} color={activeTab === 'bugs' ? '#fff' : 'var(--color-danger)'} />
+              <span>缺陷与问题</span>
+              <span
+                style={{
+                  fontSize: '11px',
+                  padding: '1px 6px',
+                  borderRadius: '10px',
+                  backgroundColor:
+                    activeTab === 'bugs'
+                      ? 'rgba(255,255,255,0.25)'
+                      : unresolvedBugsCount > 0
+                      ? 'var(--bg-danger-subtle)'
+                      : 'rgba(9,30,66,0.08)',
+                  color:
+                    activeTab === 'bugs'
+                      ? '#fff'
+                      : unresolvedBugsCount > 0
+                      ? 'var(--color-danger)'
+                      : 'var(--text-secondary)',
+                  fontWeight: 600,
+                  border: unresolvedBugsCount > 0 && activeTab !== 'bugs' ? '1px solid var(--border-danger)' : 'none',
+                }}
+              >
+                {unresolvedBugsCount} 待解决
+              </span>
+            </button>
+
             <button
               data-ui="button"
               data-variant={activeTab === 'all' ? 'primary' : 'ghost'}
@@ -265,7 +328,7 @@ export const TasksPage: React.FC = () => {
               style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
               <List size={15} />
-              <span>全部</span>
+              <span>全部任务</span>
               <span
                 style={{
                   fontSize: '11px',
@@ -355,75 +418,87 @@ export const TasksPage: React.FC = () => {
             </div>
           )}
 
-          {/* 任务搜索框 */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <Search size={14} style={{ position: 'absolute', left: '10px', color: 'var(--text-muted)' }} />
-            <input
-              data-ui="input"
-              placeholder="搜索 Key / 标题..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ paddingLeft: '30px', width: '170px', fontSize: '12.5px' }}
-            />
-          </div>
+          {/* 任务搜索与过滤（仅在 todo 和 all 模式下展示） */}
+          {activeTab !== 'bugs' && (
+            <>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <Search size={14} style={{ position: 'absolute', left: '10px', color: 'var(--text-muted)' }} />
+                <input
+                  data-ui="input"
+                  placeholder="搜索 Key / 标题..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{ paddingLeft: '30px', width: '170px', fontSize: '12.5px' }}
+                />
+              </div>
 
-          {/* 成员过滤 */}
-          <select
-            data-ui="select"
-            value={assigneeFilter}
-            onChange={(e) => setAssigneeFilter(e.target.value)}
-            style={{ width: '130px', fontSize: '12.5px' }}
-          >
-            <option value="currentUser()">仅我的任务</option>
-            <option value="">所有成员</option>
-          </select>
+              <select
+                data-ui="select"
+                value={assigneeFilter}
+                onChange={(e) => setAssigneeFilter(e.target.value)}
+                style={{ width: '130px', fontSize: '12.5px' }}
+              >
+                <option value="currentUser()">仅我的任务</option>
+                <option value="">所有成员</option>
+              </select>
 
-          {/* 状态过滤 */}
-          <select
-            data-ui="select"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            style={{ width: '130px', fontSize: '12.5px' }}
-          >
-            <option value="">全部状态</option>
-            <option value="待办">待办 (To Do)</option>
-            <option value="进行中">进行中 (In Progress)</option>
-            <option value="已完成">已完成 (Done)</option>
-          </select>
+              <select
+                data-ui="select"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{ width: '130px', fontSize: '12.5px' }}
+              >
+                <option value="">全部状态</option>
+                <option value="待办">待办 (To Do)</option>
+                <option value="进行中">进行中 (In Progress)</option>
+                <option value="已完成">已完成 (Done)</option>
+              </select>
+            </>
+          )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {/* 预估工时统计徽章 */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '12px',
-              color: 'var(--text-secondary)',
-              backgroundColor: 'var(--bg-surface)',
-              border: '1px solid var(--border-default)',
-              padding: '4px 10px',
-              borderRadius: 'var(--radius-sm)',
-            }}
-          >
-            <Clock size={13} color="var(--color-primary)" />
-            <span>
-              共 <strong>{displayIssues.length}</strong> 项 · 预估 <strong>{totalHoursStr}h</strong>
-            </span>
-          </div>
+        {activeTab !== 'bugs' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {/* 预估工时统计徽章 */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '12px',
+                color: 'var(--text-secondary)',
+                backgroundColor: 'var(--bg-surface)',
+                border: '1px solid var(--border-default)',
+                padding: '4px 10px',
+                borderRadius: 'var(--radius-sm)',
+              }}
+            >
+              <Clock size={13} color="var(--color-primary)" />
+              <span>
+                共 <strong>{displayIssues.length}</strong> 项 · 预估 <strong>{totalHoursStr}h</strong>
+              </span>
+            </div>
 
-          <button data-ui="button" onClick={loadIssues}>
-            <RotateCcw size={14} />
-            <span>刷新</span>
-          </button>
-        </div>
+            <button data-ui="button" onClick={loadIssues}>
+              <RotateCcw size={14} />
+              <span>刷新</span>
+            </button>
+          </div>
+        )}
       </div>
 
-      {loading && <TableSkeleton rows={7} />}
+      {/* 缺陷中心嵌入视图 */}
+      {activeTab === 'bugs' && (
+        <BugsPage
+          embedded
+          onUnresolvedCountChange={(count) => setUnresolvedBugsCount(count)}
+        />
+      )}
 
-      {/* 任务表格列表视图 */}
-      {!loading && (
+      {/* 任务列表视图 */}
+      {activeTab !== 'bugs' && loading && <TableSkeleton rows={7} />}
+
+      {activeTab !== 'bugs' && !loading && (
         <div data-ui="table-container">
           <table data-ui="table">
             <thead>
@@ -455,8 +530,31 @@ export const TasksPage: React.FC = () => {
                     }}
                     onClick={() => setSelectedKey(item.key)}
                   >
-                    <td style={{ fontWeight: 700, color: isDone ? 'var(--text-muted)' : 'var(--color-primary)' }}>
-                      {item.key}
+                    <td>
+                      <span
+                        onClick={(e) => openJira(item.key, e)}
+                        title={`点击在 Jira 官方系统中打开 ${item.key}`}
+                        style={{
+                          fontWeight: 700,
+                          color: isDone ? 'var(--text-muted)' : 'var(--color-primary)',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          textDecoration: 'underline',
+                          textDecorationColor: 'transparent',
+                          transition: 'text-decoration-color 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.textDecorationColor = isDone ? 'var(--text-muted)' : 'var(--color-primary)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.textDecorationColor = 'transparent'
+                        }}
+                      >
+                        <span>{item.key}</span>
+                        <ExternalLink size={11} style={{ opacity: 0.6 }} />
+                      </span>
                     </td>
                     <td>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>

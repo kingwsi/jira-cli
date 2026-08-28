@@ -3,7 +3,6 @@ import { NavLink } from 'react-router-dom'
 import {
   CalendarRange,
   CheckSquare,
-  Bug,
   Clock,
   Settings,
   Layers,
@@ -34,7 +33,7 @@ export const Header: React.FC<HeaderProps> = ({ onSelectIssue }) => {
     <header data-ui="top-nav">
       {/* 左侧：Logo 与 主导航菜单 */}
       <div data-ui="top-nav-left">
-        <NavLink to="/planning" data-ui="top-nav-brand">
+        <NavLink to="/tasks" data-ui="top-nav-brand">
           <div data-ui="top-nav-logo">
             <Layers size={16} />
           </div>
@@ -43,30 +42,21 @@ export const Header: React.FC<HeaderProps> = ({ onSelectIssue }) => {
 
         <nav data-ui="top-nav-links">
           <NavLink
+            to="/tasks"
+            data-ui="top-nav-item"
+            className={({ isActive }) => (isActive ? 'active' : '')}
+          >
+            <CheckSquare size={15} />
+            <span>待办</span>
+          </NavLink>
+
+          <NavLink
             to="/planning"
             data-ui="top-nav-item"
             className={({ isActive }) => (isActive ? 'active' : '')}
           >
             <CalendarRange size={15} />
             <span>规划与排期</span>
-          </NavLink>
-
-          <NavLink
-            to="/tasks"
-            data-ui="top-nav-item"
-            className={({ isActive }) => (isActive ? 'active' : '')}
-          >
-            <CheckSquare size={15} />
-            <span>我的任务</span>
-          </NavLink>
-
-          <NavLink
-            to="/bugs"
-            data-ui="top-nav-item"
-            className={({ isActive }) => (isActive ? 'active' : '')}
-          >
-            <Bug size={15} />
-            <span>缺陷中心</span>
           </NavLink>
 
           <NavLink

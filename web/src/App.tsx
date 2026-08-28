@@ -18,9 +18,10 @@ export const App: React.FC = () => {
       />
       <main data-ui="admin-main">
         <Routes>
-          <Route path="/" element={<Navigate to="/planning" replace />} />
-          <Route path="/planning" element={<PlanningPage />} />
+          <Route path="/" element={<Navigate to="/tasks" replace />} />
+          <Route path="/todo" element={<Navigate to="/tasks" replace />} />
           <Route path="/tasks" element={<TasksPage />} />
+          <Route path="/planning" element={<PlanningPage />} />
           <Route path="/bugs" element={<BugsPage />} />
           <Route path="/worklogs" element={<WorklogsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
