@@ -381,9 +381,10 @@ export const WorklogsPage: React.FC = () => {
   }
 
   return (
-    <div data-ui="page-content" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+    <div data-ui="page-content" data-page="worklogs" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
       {/* ==================== 顶部工具栏 (与规划页一致的结构) ==================== */}
       <div
+        data-ui="page-toolbar"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -392,9 +393,10 @@ export const WorklogsPage: React.FC = () => {
           gap: '12px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+        <div data-ui="toolbar-main" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           {/* 视图切换 */}
           <div
+            data-ui="toolbar-segmented"
             style={{
               display: 'inline-flex',
               backgroundColor: 'var(--bg-surface-dim)',
@@ -426,11 +428,12 @@ export const WorklogsPage: React.FC = () => {
           </div>
 
           {/* 周期切换器 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div data-ui="toolbar-period" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <button data-ui="button" data-size="sm" onClick={handlePrev}>
               <ChevronLeft size={14} />
             </button>
             <div
+              data-ui="toolbar-control"
               style={{
                 fontSize: '13.5px',
                 fontWeight: 600,
@@ -477,6 +480,7 @@ export const WorklogsPage: React.FC = () => {
 
           {/* 工作日与节假日统计徽章 (与规划页同款) */}
           <div
+            data-ui="toolbar-control"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -503,6 +507,7 @@ export const WorklogsPage: React.FC = () => {
 
           {/* 核对进度徽章 (绿/红双色，同规划页预估覆盖徽章) */}
           <div
+            data-ui="toolbar-control"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -539,6 +544,7 @@ export const WorklogsPage: React.FC = () => {
           {viewMode === 'week' &&
             (allGood ? (
               <div
+                data-ui="toolbar-control"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -557,6 +563,7 @@ export const WorklogsPage: React.FC = () => {
               </div>
             ) : weekProblemDates.length > 0 ? (
               <div
+                data-ui="toolbar-control"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -777,7 +784,7 @@ export const WorklogsPage: React.FC = () => {
         </div>
 
         {/* 右侧操作区 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div data-ui="toolbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             data-ui="button"
             data-variant="primary"

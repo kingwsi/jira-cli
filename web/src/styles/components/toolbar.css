@@ -1,0 +1,147 @@
+/* Shared page toolbar rhythm */
+[data-ui="page-toolbar"] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+}
+
+[data-ui="toolbar-main"],
+[data-ui="toolbar-actions"],
+[data-ui="toolbar-period"],
+[data-ui="toolbar-chips"] {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+[data-ui="toolbar-main"] {
+  gap: 8px;
+}
+
+[data-ui="toolbar-actions"],
+[data-ui="toolbar-period"],
+[data-ui="toolbar-chips"] {
+  gap: 6px;
+}
+
+[data-ui="page-toolbar"] [data-ui="button"],
+[data-ui="page-toolbar"] [data-ui="input"],
+[data-ui="page-toolbar"] [data-ui="select"],
+[data-ui="toolbar-control"],
+[data-ui="toolbar-segmented"],
+[data-ui="page-heading"] {
+  box-sizing: border-box;
+  height: 34px !important;
+  min-height: 34px !important;
+}
+
+[data-ui="page-toolbar"] [data-ui="button"] {
+  padding-block: 0;
+  font-size: 12.5px;
+}
+
+[data-ui="page-toolbar"] [data-ui="button-group"] {
+  height: 34px;
+}
+
+[data-ui="page-toolbar"] [data-ui="button-group"] [data-ui="button"] {
+  height: 32px !important;
+  min-height: 32px !important;
+}
+
+[data-ui="page-toolbar"] [data-ui="input"],
+[data-ui="page-toolbar"] [data-ui="select"] {
+  padding-block: 0;
+  font-size: 12.5px;
+}
+
+[data-ui="page-toolbar"] [data-ui="search-input"] {
+  height: 34px;
+}
+
+[data-ui="toolbar-control"],
+[data-ui="toolbar-chip"],
+[data-ui="page-heading"] {
+  display: inline-flex;
+  align-items: center;
+}
+
+[data-ui="toolbar-control"] {
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-surface);
+  font-size: 12.5px !important;
+  line-height: 1;
+}
+
+[data-ui="toolbar-chip"] {
+  box-sizing: border-box;
+  height: 24px !important;
+  min-height: 24px !important;
+  gap: 4px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm) !important;
+  font-size: 12px !important;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+[data-ui="toolbar-segmented"] {
+  align-items: center;
+}
+
+[data-ui="toolbar-segmented"] > button {
+  height: 30px;
+  padding-block: 0 !important;
+}
+
+[data-ui="page-heading"] {
+  gap: 6px;
+  font-size: 16px !important;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  [data-ui="page-toolbar"] {
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  [data-ui="toolbar-main"],
+  [data-ui="toolbar-actions"] {
+    width: 100%;
+  }
+
+  [data-ui="page-toolbar"] [data-ui="button"],
+  [data-ui="page-toolbar"] [data-ui="input"],
+  [data-ui="page-toolbar"] [data-ui="select"] {
+    height: auto !important;
+  }
+
+  [data-ui="page-toolbar"] [data-ui="button-group"] {
+    height: auto !important;
+  }
+
+  [data-ui="page-toolbar"] [data-ui="button-group"] [data-ui="button"] {
+    height: auto !important;
+  }
+
+  [data-ui="toolbar-control"] {
+    height: auto !important;
+    min-height: 42px !important;
+  }
+
+  [data-ui="toolbar-segmented"] {
+    height: 44px !important;
+  }
+
+  [data-ui="toolbar-segmented"] > button {
+    height: 40px;
+  }
+}

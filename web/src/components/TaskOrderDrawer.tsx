@@ -5,7 +5,6 @@ import {
   TrendingUp,
   History,
   Send,
-  Edit3,
   Building2,
   Tag,
   User,
@@ -51,7 +50,7 @@ export const TaskOrderDrawer: React.FC<TaskOrderDrawerProps> = ({
           setJiraBaseUrl(cfg.url.replace(/\/+$/, ''))
         }
       })
-      .catch(() => {})
+      .catch(() => { })
   }, [])
 
   const reloadIssue = (key: string) => {
@@ -157,8 +156,8 @@ export const TaskOrderDrawer: React.FC<TaskOrderDrawerProps> = ({
                   issue.statusCategory === 'Done'
                     ? 'done'
                     : issue.statusCategory === 'In Progress'
-                    ? 'in-progress'
-                    : 'todo'
+                      ? 'in-progress'
+                      : 'todo'
                 }
               >
                 {issue.status}
@@ -265,8 +264,7 @@ export const TaskOrderDrawer: React.FC<TaskOrderDrawerProps> = ({
                       color: '#fff',
                     }}
                   >
-                    <Edit3 size={13} />
-                    <span>更新周报与进度</span>
+                    <span>查看与更新</span>
                   </button>
                 </div>
 
@@ -336,7 +334,7 @@ export const TaskOrderDrawer: React.FC<TaskOrderDrawerProps> = ({
                     </div>
                   </div>
 
-                  {/* 双层叠影进度轨道 */}
+                  {/* 矩形块状进度轨道 */}
                   {(() => {
                     const cur = pr?.currentProgress ?? 0
                     const last = pr?.lastWeekProgress ?? cur
@@ -346,67 +344,52 @@ export const TaskOrderDrawer: React.FC<TaskOrderDrawerProps> = ({
                       <>
                         <div
                           style={{
-                            position: 'relative',
-                            height: '8px',
-                            backgroundColor: 'var(--border-default)',
-                            borderRadius: '4px',
-                            overflow: 'hidden',
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(20, 1fr)',
+                            gap: '2.5px',
+                            height: '10px',
                           }}
                         >
-                          {diff >= 0 ? (
-                            <>
+                          {Array.from({ length: 20 }).map((_, idx) => {
+                            const blockPercent = (idx + 1) * 5
+                            const isCurFilled = cur >= blockPercent
+                            const isLastFilled = last >= blockPercent
+
+                            let bg = 'var(--bg-muted)'
+                            let border = 'var(--border-default)'
+
+                            if (diff >= 0) {
+                              if (isLastFilled) {
+                                bg = cur >= 100 ? '#00875A' : '#0052CC'
+                                border = cur >= 100 ? '#00875A' : '#0052CC'
+                              } else if (isCurFilled) {
+                                bg = cur >= 100 ? '#36B37E' : '#4C9AFF'
+                                border = cur >= 100 ? '#36B37E' : '#2684FF'
+                              }
+                            } else {
+                              if (isCurFilled) {
+                                bg = '#DE350B'
+                                border = '#DE350B'
+                              } else if (isLastFilled) {
+                                bg = 'rgba(222, 53, 11, 0.22)'
+                                border = 'rgba(222, 53, 11, 0.4)'
+                              }
+                            }
+
+                            return (
                               <div
+                                key={idx}
                                 style={{
-                                  position: 'absolute',
-                                  top: 0,
-                                  left: 0,
                                   height: '100%',
-                                  width: `${Math.min(100, Math.max(0, cur))}%`,
-                                  backgroundColor: cur >= 100 ? '#36B37E' : '#4C9AFF',
-                                  borderRadius: '4px',
-                                  transition: 'width 0.4s ease',
+                                  backgroundColor: bg,
+                                  border: `1px solid ${border}`,
+                                  borderRadius: '2px',
+                                  transition: 'all 0.2s ease',
                                 }}
+                                title={`${blockPercent}%`}
                               />
-                              <div
-                                style={{
-                                  position: 'absolute',
-                                  top: 0,
-                                  left: 0,
-                                  height: '100%',
-                                  width: `${Math.min(100, Math.max(0, last))}%`,
-                                  backgroundColor: cur >= 100 ? '#00875A' : '#0052CC',
-                                  borderRadius: last >= cur ? '4px' : '4px 0 0 4px',
-                                  transition: 'width 0.4s ease',
-                                }}
-                              />
-                            </>
-                          ) : (
-                            <>
-                              <div
-                                style={{
-                                  position: 'absolute',
-                                  top: 0,
-                                  left: 0,
-                                  height: '100%',
-                                  width: `${Math.min(100, Math.max(0, last))}%`,
-                                  backgroundColor: 'rgba(222, 53, 11, 0.25)',
-                                  borderRadius: '4px',
-                                }}
-                              />
-                              <div
-                                style={{
-                                  position: 'absolute',
-                                  top: 0,
-                                  left: 0,
-                                  height: '100%',
-                                  width: `${Math.min(100, Math.max(0, cur))}%`,
-                                  backgroundColor: '#DE350B',
-                                  borderRadius: '4px',
-                                  transition: 'width 0.4s ease',
-                                }}
-                              />
-                            </>
-                          )}
+                            )
+                          })}
                         </div>
 
                         <div

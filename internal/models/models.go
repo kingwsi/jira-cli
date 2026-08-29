@@ -41,9 +41,10 @@ type ProgressReport struct {
 	TestProgress     *int      `json:"testProgress,omitempty"`     // 集成测试进度(%) customfield_10811
 	ReleaseProgress  *int      `json:"releaseProgress,omitempty"`  // 发布进度(%) customfield_10812
 	DeployProgress   *int      `json:"deployProgress,omitempty"`   // 落地进度(%) customfield_10813
-	TechSolutionDesc string    `json:"techSolutionDesc,omitempty"` // 难度/技术方案/其他说明 customfield_10208
-	LatestComment    string    `json:"latestComment,omitempty"`    // 最新一条周报备注
-	Category         string    `json:"category,omitempty"`         // 分类 customfield_10805 (技术/业务等)
+	TechSolutionDesc  string    `json:"techSolutionDesc,omitempty"`  // 难度/技术方案/其他说明 customfield_10208
+	LatestComment     string    `json:"latestComment,omitempty"`     // 最新一条周报备注
+	LatestCommentTime string    `json:"latestCommentTime,omitempty"` // 最新一条备注创建时间
+	Category          string    `json:"category,omitempty"`          // 分类 customfield_10805 (技术/业务等)
 	DemandType       string    `json:"demandType,omitempty"`       // 需求类型 customfield_10201 (项目支持等)
 	ClientName       string    `json:"clientName,omitempty"`       // 客户名称 customfield_10209
 	ProductManager   *UserInfo `json:"productManager,omitempty"`   // 产品经理 customfield_10902

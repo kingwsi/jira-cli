@@ -1,7 +1,6 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Header } from './components/Header'
-import { TaskDrawer } from './components/TaskDrawer'
 import { PlanningPage } from './pages/PlanningPage'
 import { TasksPage } from './pages/TasksPage'
 import { BugsPage } from './pages/BugsPage'
@@ -10,13 +9,9 @@ import { WorklogsPage } from './pages/WorklogsPage'
 import { SettingsPage } from './pages/SettingsPage'
 
 export const App: React.FC = () => {
-  const [selectedIssueKey, setSelectedIssueKey] = useState<string | null>(null)
-
   return (
     <div data-ui="admin-shell">
-      <Header
-        onSelectIssue={(key) => setSelectedIssueKey(key)}
-      />
+      <Header />
       <main data-ui="admin-main">
         <Routes>
           <Route path="/" element={<Navigate to="/tasks" replace />} />
@@ -30,11 +25,6 @@ export const App: React.FC = () => {
         </Routes>
       </main>
 
-      {/* 全局搜索或触发详情抽屉 */}
-      <TaskDrawer
-        issueKey={selectedIssueKey}
-        onClose={() => setSelectedIssueKey(null)}
-      />
     </div>
   )
 }

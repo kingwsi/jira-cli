@@ -84,9 +84,10 @@ export const BugsPage: React.FC<BugsPageProps> = ({ embedded = false, onUnresolv
   }
 
   return (
-    <div data-ui={embedded ? undefined : 'page-content'} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div data-ui={embedded ? undefined : 'page-content'} data-page="bugs" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       {/* 顶部工具栏 */}
       <div
+        data-ui="page-toolbar"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -95,15 +96,16 @@ export const BugsPage: React.FC<BugsPageProps> = ({ embedded = false, onUnresolv
           gap: '12px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '16px' }}>
+        <div data-ui="toolbar-main" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <div data-ui="page-heading" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '16px' }}>
             <Bug size={20} color="var(--color-danger)" />
             <span>缺陷与问题中心</span>
           </div>
 
           {/* 统计胶囊 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+          <div data-ui="toolbar-chips" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
             <span
+              data-ui="toolbar-chip"
               style={{
                 backgroundColor: 'var(--bg-danger-subtle)',
                 color: 'var(--color-danger)',
@@ -120,6 +122,7 @@ export const BugsPage: React.FC<BugsPageProps> = ({ embedded = false, onUnresolv
               待解决: {unresolvedCount}
             </span>
             <span
+              data-ui="toolbar-chip"
               style={{
                 backgroundColor: 'var(--bg-success-subtle)',
                 color: 'var(--color-success)',
@@ -175,10 +178,12 @@ export const BugsPage: React.FC<BugsPageProps> = ({ embedded = false, onUnresolv
           </div>
         </div>
 
-        <button data-ui="button" onClick={loadBugs} disabled={loading}>
-          <RotateCcw size={14} className={loading ? 'vbg-spinner' : ''} />
-          <span>刷新 ({filteredBugs.length})</span>
-        </button>
+        <div data-ui="toolbar-actions">
+          <button data-ui="button" onClick={loadBugs} disabled={loading}>
+            <RotateCcw size={14} className={loading ? 'vbg-spinner' : ''} />
+            <span>刷新 ({filteredBugs.length})</span>
+          </button>
+        </div>
       </div>
 
       {/* 错误提示 */}
@@ -210,7 +215,7 @@ export const BugsPage: React.FC<BugsPageProps> = ({ embedded = false, onUnresolv
 
       {/* 缺陷表格 */}
       {!loading && !error && (
-        <div data-ui="table-container">
+        <div data-ui="table-container" data-mobile-table="bugs">
           <table data-ui="table">
             <thead>
               <tr>

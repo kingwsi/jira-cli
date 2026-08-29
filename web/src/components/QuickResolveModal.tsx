@@ -283,6 +283,7 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
 
       <div
         ref={popoverRef}
+        data-ui="quick-resolve-popover"
         style={popoverStyle}
         onClick={(e) => e.stopPropagation()}
       >

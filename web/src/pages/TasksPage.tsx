@@ -252,9 +252,10 @@ export const TasksPage: React.FC = () => {
   }
 
   return (
-    <div data-ui="page-content" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div data-ui="page-content" data-page="tasks" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       {/* 顶部过滤工具栏 */}
       <div
+        data-ui="page-toolbar"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -263,18 +264,23 @@ export const TasksPage: React.FC = () => {
           gap: '12px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        <div data-ui="toolbar-main" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           {/* 待办 / 缺陷 / 全部 切换按钮组 */}
-          <div data-ui="button-group">
+          <div data-ui="button-group" data-mobile-role="primary-tabs">
             <button
               data-ui="button"
               data-variant={activeTab === 'todo' ? 'primary' : 'ghost'}
               onClick={() => setActiveTab('todo')}
+              aria-label={`本周待办，共 ${weekIssues.length} 项`}
+              aria-pressed={activeTab === 'todo'}
+              title="本周待办"
               style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
               <ListTodo size={15} />
-              <span>本周待办</span>
+              <span data-mobile-role="tab-label">本周待办</span>
               <span
+                data-mobile-role="tab-count"
+                data-count={weekIssues.length}
                 style={{
                   fontSize: '11px',
                   padding: '1px 6px',
@@ -292,11 +298,16 @@ export const TasksPage: React.FC = () => {
               data-ui="button"
               data-variant={activeTab === 'bugs' ? 'primary' : 'ghost'}
               onClick={() => setActiveTab('bugs')}
+              aria-label={`缺陷与问题，${unresolvedBugsCount} 个待解决`}
+              aria-pressed={activeTab === 'bugs'}
+              title="缺陷与问题"
               style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
               <Bug size={15} color={activeTab === 'bugs' ? '#fff' : 'var(--color-danger)'} />
-              <span>缺陷与问题</span>
+              <span data-mobile-role="tab-label">缺陷与问题</span>
               <span
+                data-mobile-role="tab-count"
+                data-count={unresolvedBugsCount}
                 style={{
                   fontSize: '11px',
                   padding: '1px 6px',
@@ -325,11 +336,16 @@ export const TasksPage: React.FC = () => {
               data-ui="button"
               data-variant={activeTab === 'all' ? 'primary' : 'ghost'}
               onClick={() => setActiveTab('all')}
+              aria-label={`全部任务，共 ${issues.length} 项`}
+              aria-pressed={activeTab === 'all'}
+              title="全部任务"
               style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
               <List size={15} />
-              <span>全部任务</span>
+              <span data-mobile-role="tab-label">全部任务</span>
               <span
+                data-mobile-role="tab-count"
+                data-count={issues.length}
                 style={{
                   fontSize: '11px',
                   padding: '1px 6px',
@@ -347,6 +363,7 @@ export const TasksPage: React.FC = () => {
           {/* 待办模式下展示本周时间徽章 */}
           {activeTab === 'todo' && (
             <div
+              data-ui="toolbar-control"
               style={{
                 fontSize: '12.5px',
                 fontWeight: 600,
@@ -368,11 +385,12 @@ export const TasksPage: React.FC = () => {
 
           {/* 全部模式下展示月份选择器（与规划与排期保持一致） */}
           {activeTab === 'all' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div data-ui="toolbar-period" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <button data-ui="button" data-size="sm" onClick={handlePrevMonth} title="上一月">
                 <ChevronLeft size={14} />
               </button>
               <div
+                data-ui="toolbar-control"
                 style={{
                   fontSize: '13px',
                   fontWeight: 600,
@@ -388,6 +406,7 @@ export const TasksPage: React.FC = () => {
                 <Calendar size={14} color="var(--color-primary)" />
                 <span>{currentMonth}</span>
                 <span
+                  data-mobile-visibility="detail"
                   style={{
                     fontSize: '11px',
                     backgroundColor: 'rgba(9, 30, 66, 0.08)',
@@ -421,7 +440,11 @@ export const TasksPage: React.FC = () => {
           {/* 任务搜索与过滤（仅在 todo 和 all 模式下展示） */}
           {activeTab !== 'bugs' && (
             <>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <div
+                data-ui="search-input"
+                data-mobile-visibility="page-search"
+                style={{ position: 'relative', display: 'flex', alignItems: 'center' }}
+              >
                 <Search size={14} style={{ position: 'absolute', left: '10px', color: 'var(--text-muted)' }} />
                 <input
                   data-ui="input"
@@ -434,6 +457,7 @@ export const TasksPage: React.FC = () => {
 
               <select
                 data-ui="select"
+                data-mobile-visibility="secondary-filter"
                 value={assigneeFilter}
                 onChange={(e) => setAssigneeFilter(e.target.value)}
                 style={{ width: '130px', fontSize: '12.5px' }}
@@ -444,6 +468,7 @@ export const TasksPage: React.FC = () => {
 
               <select
                 data-ui="select"
+                data-mobile-visibility="secondary-filter"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 style={{ width: '130px', fontSize: '12.5px' }}
@@ -458,9 +483,10 @@ export const TasksPage: React.FC = () => {
         </div>
 
         {activeTab !== 'bugs' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div data-ui="toolbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {/* 预估工时统计徽章 */}
             <div
+              data-ui="toolbar-control"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -499,7 +525,7 @@ export const TasksPage: React.FC = () => {
       {activeTab !== 'bugs' && loading && <TableSkeleton rows={7} />}
 
       {activeTab !== 'bugs' && !loading && (
-        <div data-ui="table-container">
+        <div data-ui="table-container" data-mobile-table="tasks">
           <table data-ui="table">
             <thead>
               <tr>

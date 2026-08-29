@@ -399,3 +399,138 @@ export const WeekCalendarSkeleton: React.FC = () => {
   )
 }
 
+/** 季度任务令 / 专项看板卡片骨架屏 */
+export const TaskOrdersCardSkeleton: React.FC<{ count?: number }> = ({ count = 2 }) => {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+      {/* 头部标题与描述 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Skeleton width={16} height={16} circle />
+          <Skeleton width={180} height={16} />
+        </div>
+        <Skeleton width={140} height={14} />
+      </div>
+
+      {/* 卡片网格 */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: count === 1 ? '1fr' : 'repeat(auto-fit, minmax(380px, 1fr))',
+          gap: '12px',
+        }}
+      >
+        {Array.from({ length: count }).map((_, i) => (
+          <div
+            key={i}
+            data-ui="card"
+            style={{
+              backgroundColor: 'var(--bg-surface)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-md)',
+              padding: '16px',
+              boxShadow: 'var(--shadow-sm)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+            }}
+          >
+            {/* 卡片头部：同行 Key + 标题 + Tag + 详情按钮 */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                <Skeleton width={75} height={16} />
+                <Skeleton width="60%" height={16} />
+                <Skeleton width={48} height={18} borderRadius="var(--radius-xs)" />
+              </div>
+              <Skeleton width={24} height={24} borderRadius="var(--radius-sm)" />
+            </div>
+
+            {/* 经办人等标签 */}
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <Skeleton width={90} height={14} />
+              <Skeleton width={80} height={14} />
+            </div>
+
+            {/* 20段进度条骨架屏 */}
+            <div
+              style={{
+                backgroundColor: 'var(--bg-app)',
+                border: '1px solid var(--border-subtle)',
+                padding: '12px 14px',
+                borderRadius: 'var(--radius-md)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Skeleton width={60} height={14} />
+                <Skeleton width={50} height={20} />
+              </div>
+
+              {/* 20 段微块 */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(20, 1fr)',
+                  gap: '2.5px',
+                  height: '10px',
+                }}
+              >
+                {Array.from({ length: 20 }).map((_, bIdx) => (
+                  <Skeleton
+                    key={bIdx}
+                    width="100%"
+                    height="100%"
+                    borderRadius="2px"
+                    style={{ opacity: bIdx < 12 ? 0.8 : 0.3 }}
+                  />
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Skeleton width={50} height={11} />
+                <Skeleton width={70} height={11} />
+                <Skeleton width={50} height={11} />
+              </div>
+            </div>
+
+            {/* 卡片底栏操作 */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '4px' }}>
+              <Skeleton width={90} height={26} borderRadius="var(--radius-sm)" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** 弹窗历史记录评论骨架屏 */
+export const ModalCommentsSkeleton: React.FC = () => {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      {Array.from({ length: 2 }).map((_, i) => (
+        <div
+          key={i}
+          style={{
+            padding: '6px 10px',
+            backgroundColor: 'var(--bg-surface)',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border-subtle)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4px',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Skeleton width={55} height={13} />
+            <Skeleton width={75} height={11} />
+          </div>
+          <Skeleton width={i === 0 ? '90%' : '65%'} height={13} />
+        </div>
+      ))}
+    </div>
+  )
+}
+

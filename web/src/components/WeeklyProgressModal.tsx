@@ -8,9 +8,14 @@ import {
   History,
   ExternalLink,
   MessageSquare,
+  Building2,
+  Tag,
+  User,
+  FileText,
 } from 'lucide-react'
 import { api } from '../api/client'
 import { IssueItem, CommentItem } from '../types'
+import { ModalCommentsSkeleton } from './Skeleton'
 
 export interface WeeklyProgressModalProps {
   issue: IssueItem | null
@@ -18,6 +23,8 @@ export interface WeeklyProgressModalProps {
   onSuccess: () => void
   jiraUrl?: string
 }
+
+export type ProgressTarget = 'total' | 'product' | 'dev' | 'test' | 'release' | 'deploy'
 
 export const WeeklyProgressModal: React.FC<WeeklyProgressModalProps> = ({
   issue,
@@ -27,13 +34,21 @@ export const WeeklyProgressModal: React.FC<WeeklyProgressModalProps> = ({
 }) => {
   if (!issue) return null
 
+  const TOTAL_BLOCKS = 20
   const pr = issue.progressReport
   const initialCurrentProgress = pr?.currentProgress ?? 0
   const defaultLastWeek = pr?.currentProgress ?? pr?.lastWeekProgress ?? 0
 
+  const [activeTargetKey, setActiveTargetKey] = useState<ProgressTarget>('total')
   const [currentProgress, setCurrentProgress] = useState<number>(initialCurrentProgress)
+  const [productProgress, setProductProgress] = useState<number>(pr?.productProgress ?? 0)
+  const [devProgress, setDevProgress] = useState<number>(pr?.devProgress ?? 0)
+  const [testProgress, setTestProgress] = useState<number>(pr?.testProgress ?? 0)
+  const [releaseProgress, setReleaseProgress] = useState<number>(pr?.releaseProgress ?? 0)
+  const [deployProgress, setDeployProgress] = useState<number>(pr?.deployProgress ?? 0)
+
+  const [hoverProgress, setHoverProgress] = useState<number | null>(null)
   const [lastWeekProgress, setLastWeekProgress] = useState<number>(defaultLastWeek)
-  const [progressStatus, setProgressStatus] = useState<string>(pr?.progressStatus || '正常')
   const [comment, setComment] = useState<string>('')
 
   const [comments, setComments] = useState<CommentItem[]>([])
@@ -45,16 +60,21 @@ export const WeeklyProgressModal: React.FC<WeeklyProgressModalProps> = ({
     if (issue) {
       const cur = issue.progressReport?.currentProgress ?? 0
       setCurrentProgress(cur)
+      setProductProgress(issue.progressReport?.productProgress ?? 0)
+      setDevProgress(issue.progressReport?.devProgress ?? 0)
+      setTestProgress(issue.progressReport?.testProgress ?? 0)
+      setReleaseProgress(issue.progressReport?.releaseProgress ?? 0)
+      setDeployProgress(issue.progressReport?.deployProgress ?? 0)
+      setActiveTargetKey('total')
+      setHoverProgress(null)
       setLastWeekProgress(
         issue.progressReport?.currentProgress ??
           issue.progressReport?.lastWeekProgress ??
           0
       )
-      setProgressStatus(issue.progressReport?.progressStatus || '正常')
       setComment('')
       setError(null)
 
-      // 拉取历史备注
       setLoadingComments(true)
       api
         .getComments(issue.key)
@@ -70,10 +90,31 @@ export const WeeklyProgressModal: React.FC<WeeklyProgressModalProps> = ({
     }
   }, [issue])
 
+  const progressDefs: {
+    key: ProgressTarget
+    label: string
+    shortLabel: string
+    value: number
+    setter: (val: number) => void
+    isSubStage?: boolean
+  }[] = [
+    { key: 'total', label: '当前总进度', shortLabel: '总进度', value: currentProgress, setter: setCurrentProgress },
+    { key: 'product', label: '产品进度', shortLabel: '产品', value: productProgress, setter: setProductProgress, isSubStage: true },
+    { key: 'dev', label: '研发进度', shortLabel: '研发', value: devProgress, setter: setDevProgress, isSubStage: true },
+    { key: 'test', label: '集成测试', shortLabel: '测试', value: testProgress, setter: setTestProgress, isSubStage: true },
+    { key: 'release', label: '发布进度', shortLabel: '发布', value: releaseProgress, setter: setReleaseProgress, isSubStage: true },
+    { key: 'deploy', label: '落地进度', shortLabel: '落地', value: deployProgress, setter: setDeployProgress, isSubStage: true },
+  ]
+
+  const activeDef = progressDefs.find((p) => p.key === activeTargetKey) || progressDefs[0]
+  const activeValue = hoverProgress !== null ? hoverProgress : activeDef.value
+  const isComplete = activeValue >= 100
+  const themeColor = isComplete ? '#00875a' : '#0052cc'
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (currentProgress < 0 || currentProgress > 100) {
-      setError('进度必须在 0% ~ 100% 之间')
+      setError('总进度必须在 0% ~ 100% 之间')
       return
     }
 
@@ -84,7 +125,11 @@ export const WeeklyProgressModal: React.FC<WeeklyProgressModalProps> = ({
       await api.updateWeeklyProgress(issue.key, {
         currentProgress,
         lastWeekProgress,
-        progressStatus,
+        productProgress: pr?.productProgress !== undefined || productProgress > 0 ? productProgress : undefined,
+        devProgress: pr?.devProgress !== undefined || devProgress > 0 ? devProgress : undefined,
+        testProgress: pr?.testProgress !== undefined || testProgress > 0 ? testProgress : undefined,
+        releaseProgress: pr?.releaseProgress !== undefined || releaseProgress > 0 ? releaseProgress : undefined,
+        deployProgress: pr?.deployProgress !== undefined || deployProgress > 0 ? deployProgress : undefined,
         comment: comment.trim() || undefined,
       })
       onSuccess()
@@ -105,59 +150,26 @@ export const WeeklyProgressModal: React.FC<WeeklyProgressModalProps> = ({
   }
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(9, 30, 66, 0.54)',
-        backdropFilter: 'blur(3px)',
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
-      }}
-      onClick={onClose}
-    >
+    <div data-ui="modal-backdrop" onClick={onClose}>
       <div
-        data-ui="card"
+        data-ui="modal-content"
         style={{
-          width: '100%',
-          maxWidth: '620px',
-          maxHeight: 'min(640px, 92vh)',
+          maxWidth: '640px',
+          maxHeight: 'min(720px, 94vh)',
           display: 'flex',
           flexDirection: 'column',
-          backgroundColor: 'var(--bg-surface)',
-          borderRadius: 'var(--radius-md)',
-          boxShadow:
-            '0 20px 32px -8px rgba(9, 30, 66, 0.25), 0 0 1px rgba(9, 30, 66, 0.31)',
-          overflow: 'hidden',
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal 头部 */}
-        <div
-          style={{
-            padding: '12px 18px',
-            borderBottom: '1px solid var(--border-default)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            backgroundColor: 'var(--bg-muted)',
-            flexShrink: 0,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+        <div data-ui="modal-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
             <span
               style={{
-                fontSize: '12px',
+                fontSize: '12.5px',
                 fontWeight: 700,
                 fontFamily: 'var(--font-mono)',
-                padding: '2px 6px',
-                borderRadius: '4px',
-                backgroundColor: 'rgba(0, 135, 90, 0.08)',
-                color: '#00875A',
-                border: '1px solid rgba(0, 135, 90, 0.25)',
+                color: '#0052CC',
                 cursor: jiraUrl ? 'pointer' : 'default',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -168,11 +180,11 @@ export const WeeklyProgressModal: React.FC<WeeklyProgressModalProps> = ({
               title="在 Jira 中打开"
             >
               {issue.key}
-              {jiraUrl && <ExternalLink size={10} />}
+              {jiraUrl && <ExternalLink size={11} />}
             </span>
             <span
               style={{
-                fontSize: '13.5px',
+                fontSize: '14px',
                 fontWeight: 600,
                 color: 'var(--text-primary)',
                 overflow: 'hidden',
@@ -183,6 +195,17 @@ export const WeeklyProgressModal: React.FC<WeeklyProgressModalProps> = ({
             >
               {issue.summary}
             </span>
+            <span
+              data-ui="tag"
+              style={{
+                fontSize: '11px',
+                padding: '1px 6px',
+                fontWeight: 600,
+                flexShrink: 0,
+              }}
+            >
+              {issue.status}
+            </span>
           </div>
 
           <button
@@ -190,7 +213,12 @@ export const WeeklyProgressModal: React.FC<WeeklyProgressModalProps> = ({
             data-variant="ghost"
             data-size="sm"
             onClick={onClose}
-            style={{ padding: '4px', borderRadius: '4px', flexShrink: 0 }}
+            style={{
+              padding: '4px',
+              borderRadius: 'var(--radius-sm)',
+              color: 'var(--text-muted)',
+              flexShrink: 0,
+            }}
           >
             <X size={16} />
           </button>
@@ -200,7 +228,7 @@ export const WeeklyProgressModal: React.FC<WeeklyProgressModalProps> = ({
         <form
           onSubmit={handleSubmit}
           style={{
-            padding: '16px 18px',
+            padding: '18px 20px',
             overflowY: 'auto',
             display: 'flex',
             flexDirection: 'column',
@@ -227,265 +255,401 @@ export const WeeklyProgressModal: React.FC<WeeklyProgressModalProps> = ({
             </div>
           )}
 
-          {/* 进度与状态设定卡片（强调数字与核心数据） */}
+          {/* 各细分阶段进度快速切换卡片栏 (可点击切换编辑目标) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: 'var(--text-muted)',
+                height: '18px',
+              }}
+            >
+              <span>点击下方进度可切换更新：</span>
+              <span style={{ fontSize: '11px', color: 'var(--color-primary)', fontWeight: 500 }}>
+                当前选择: {activeDef.label}
+              </span>
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1.2fr repeat(5, 1fr)',
+                gap: '6px',
+              }}
+            >
+              {progressDefs.map((p) => {
+                const isSelected = activeTargetKey === p.key
+                const isValDone = p.value >= 100
+
+                return (
+                  <div
+                    key={p.key}
+                    onClick={() => {
+                      setActiveTargetKey(p.key)
+                      setHoverProgress(null)
+                    }}
+                    title={`点击切换到 ${p.label} 进行调整`}
+                    style={{
+                      backgroundColor: isSelected ? 'rgba(0, 82, 204, 0.08)' : 'var(--bg-app)',
+                      border: isSelected ? '1px solid #0052CC' : '1px solid var(--border-subtle)',
+                      boxShadow: isSelected ? '0 0 0 1px #0052CC, 0 2px 8px rgba(0, 82, 204, 0.16)' : 'none',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '6px 8px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '2px',
+                      transition: 'background-color 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: '11px',
+                        color: isSelected ? '#0052CC' : 'var(--text-muted)',
+                        fontWeight: isSelected ? 700 : 500,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      <span>{p.shortLabel}</span>
+                      {isSelected && (
+                        <span
+                          style={{
+                            width: '5px',
+                            height: '5px',
+                            borderRadius: '50%',
+                            backgroundColor: '#0052CC',
+                            display: 'inline-block',
+                          }}
+                        />
+                      )}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: '13.5px',
+                        fontWeight: 700,
+                        fontFamily: 'var(--font-mono)',
+                        lineHeight: 1.2,
+                        color: isValDone ? '#00875A' : isSelected ? '#0052CC' : 'var(--text-primary)',
+                      }}
+                    >
+                      {p.value}%
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* 进度编辑器主视窗 (动态与上方选中的项关联，固定高度结构防抖) */}
           <div
             style={{
-              backgroundColor: 'var(--bg-app)',
-              border: '1px solid var(--border-subtle)',
-              padding: '14px 16px',
+              border: activeTargetKey === 'total' ? '1px solid var(--border-default)' : '1px solid #0052CC',
+              boxShadow: activeTargetKey === 'total' ? 'var(--shadow-sm)' : '0 0 0 1px #0052CC, 0 4px 14px rgba(0, 82, 204, 0.12)',
               borderRadius: 'var(--radius-md)',
+              padding: '14px 16px',
+              backgroundColor: 'var(--bg-surface)',
               display: 'flex',
               flexDirection: 'column',
               gap: '12px',
+              transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+              boxSizing: 'border-box',
             }}
           >
-            {/* 当前推进度核心数字区 */}
-            <div>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'baseline',
-                  justifyContent: 'space-between',
-                  marginBottom: '8px',
-                }}
-              >
-                <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                  当前总进度
-                </span>
+            {/* 顶栏：大字与增量 (定高容器) */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'flex-end',
+                justifyContent: 'space-between',
+                minHeight: '52px',
+              }}
+            >
+              <div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '2px', height: '16px' }}>
+                  正在调整: <span style={{ color: themeColor, fontWeight: 700 }}>{activeDef.label}</span>{' '}
+                  {hoverProgress !== null && <span style={{ color: themeColor }}>(预览中，点击确认)</span>}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', height: '34px' }}>
+                  <span
+                    style={{
+                      fontSize: '34px',
+                      fontWeight: 800,
+                      lineHeight: 1,
+                      fontFamily: 'var(--font-mono)',
+                      color: themeColor,
+                      letterSpacing: '-1px',
+                    }}
+                  >
+                    {activeValue}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '17px',
+                      fontWeight: 700,
+                      color: 'var(--text-secondary)',
+                      marginLeft: '2px',
+                    }}
+                  >
+                    %
+                  </span>
+                </div>
+              </div>
 
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                  {progressDiff !== 0 ? (
+              {/* 右侧指示器标签 (定高 24px) */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', height: '24px', justifyContent: 'center' }}>
+                {activeTargetKey === 'total' ? (
+                  progressDiff !== 0 ? (
                     <span
                       style={{
-                        fontSize: '11px',
+                        fontSize: '12px',
                         fontWeight: 600,
                         fontFamily: 'var(--font-mono)',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '2px',
+                        gap: '3px',
+                        padding: '2px 8px',
+                        borderRadius: 'var(--radius-full)',
                         color: progressDiff > 0 ? 'var(--color-success)' : 'var(--color-danger)',
                         backgroundColor:
-                          progressDiff > 0 ? 'rgba(0, 135, 90, 0.08)' : 'rgba(222, 53, 11, 0.08)',
-                        padding: '1px 6px',
-                        borderRadius: '4px',
+                          progressDiff > 0 ? 'var(--bg-success-subtle)' : 'var(--bg-danger-subtle)',
+                        border:
+                          progressDiff > 0 ? '1px solid var(--border-success)' : '1px solid var(--border-danger)',
+                        lineHeight: 1.2,
                       }}
                     >
                       {progressDiff > 0 ? (
                         <>
-                          <TrendingUp size={11} />
-                          +{progressDiff}%
+                          <TrendingUp size={13} />
+                          +{progressDiff}% 较上周
                         </>
                       ) : (
                         <>
-                          <TrendingDown size={11} />
-                          {progressDiff}%
+                          <TrendingDown size={13} />
+                          {progressDiff}% 回退
                         </>
                       )}
                     </span>
                   ) : (
                     <span
                       style={{
-                        fontSize: '11px',
+                        fontSize: '11.5px',
                         color: 'var(--text-muted)',
                         fontFamily: 'var(--font-mono)',
+                        backgroundColor: 'var(--bg-muted)',
+                        padding: '2px 8px',
+                        borderRadius: 'var(--radius-full)',
+                        lineHeight: 1.2,
                       }}
                     >
-                      较上周持平
+                      较上周持平 ({lastWeekProgress}%)
                     </span>
-                  )}
-
-                  <div style={{ display: 'flex', alignItems: 'baseline' }}>
-                    <span
-                      style={{
-                        fontSize: '28px',
-                        fontWeight: 800,
-                        lineHeight: 1,
-                        fontFamily: 'var(--font-mono)',
-                        color:
-                          currentProgress >= 100 ? 'var(--color-success)' : 'var(--color-primary)',
-                      }}
-                    >
-                      {currentProgress}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '14px',
-                        fontWeight: 700,
-                        marginLeft: '1px',
-                        color: 'var(--text-secondary)',
-                      }}
-                    >
-                      %
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 双层叠影对比条 */}
-              <div
-                style={{
-                  position: 'relative',
-                  height: '7px',
-                  backgroundColor: 'var(--border-default)',
-                  borderRadius: '4px',
-                  overflow: 'hidden',
-                  marginBottom: '10px',
-                }}
-              >
-                {progressDiff >= 0 ? (
-                  <>
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        height: '100%',
-                        width: `${Math.min(100, Math.max(0, currentProgress))}%`,
-                        backgroundColor: currentProgress >= 100 ? '#36B37E' : '#4C9AFF',
-                        borderRadius: '4px',
-                        transition: 'width 0.2s ease',
-                      }}
-                    />
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        height: '100%',
-                        width: `${Math.min(100, Math.max(0, lastWeekProgress))}%`,
-                        backgroundColor: currentProgress >= 100 ? '#00875A' : '#0052CC',
-                        borderRadius: lastWeekProgress >= currentProgress ? '4px' : '4px 0 0 4px',
-                        transition: 'width 0.2s ease',
-                      }}
-                    />
-                  </>
+                  )
                 ) : (
-                  <>
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        height: '100%',
-                        width: `${Math.min(100, Math.max(0, lastWeekProgress))}%`,
-                        backgroundColor: 'rgba(222, 53, 11, 0.25)',
-                        borderRadius: '4px',
-                      }}
-                    />
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        height: '100%',
-                        width: `${Math.min(100, Math.max(0, currentProgress))}%`,
-                        backgroundColor: '#DE350B',
-                        borderRadius: '4px',
-                        transition: 'width 0.2s ease',
-                      }}
-                    />
-                  </>
+                  <span
+                    style={{
+                      fontSize: '11.5px',
+                      color: isComplete ? 'var(--color-success)' : 'var(--text-secondary)',
+                      backgroundColor: isComplete ? 'var(--bg-success-subtle)' : 'var(--bg-muted)',
+                      border: isComplete ? '1px solid var(--border-success)' : '1px solid var(--border-subtle)',
+                      padding: '2px 8px',
+                      borderRadius: 'var(--radius-full)',
+                      fontWeight: 600,
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {isComplete ? '已达成 100%' : `设定值: ${activeValue}%`}
+                  </span>
                 )}
-              </div>
-
-              {/* 滑块与输入控件 */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={currentProgress}
-                  onChange={(e) => setCurrentProgress(Number(e.target.value))}
-                  style={{
-                    flex: 1,
-                    accentColor: currentProgress >= 100 ? 'var(--color-success)' : 'var(--color-primary)',
-                    cursor: 'pointer',
-                    height: '6px',
-                  }}
-                />
-                <input
-                  data-ui="input"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={currentProgress}
-                  onChange={(e) => setCurrentProgress(Number(e.target.value))}
-                  style={{
-                    width: '60px',
-                    height: '28px',
-                    textAlign: 'center',
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    fontFamily: 'var(--font-mono)',
-                  }}
-                />
               </div>
             </div>
 
-            {/* 辅助设定：上周基准与状态 */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '10px',
-                paddingTop: '10px',
-                borderTop: '1px solid var(--border-subtle)',
-              }}
-            >
-              <div>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: '11.5px',
-                    fontWeight: 600,
-                    color: 'var(--text-secondary)',
-                    marginBottom: '4px',
-                  }}
-                >
-                  上周基准 (%)
-                </label>
-                <input
-                  data-ui="input"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={lastWeekProgress}
-                  onChange={(e) => setLastWeekProgress(Number(e.target.value))}
-                  style={{
-                    height: '30px',
-                    fontSize: '12.5px',
-                    fontWeight: 600,
-                    fontFamily: 'var(--font-mono)',
-                  }}
-                />
+            {/* 矩形块状进度条（Hover 预览，点击确认） */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div
+                onMouseLeave={() => setHoverProgress(null)}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${TOTAL_BLOCKS}, 1fr)`,
+                  gap: '3px',
+                  height: '22px',
+                  userSelect: 'none',
+                }}
+              >
+                {Array.from({ length: TOTAL_BLOCKS }).map((_, idx) => {
+                  const blockPercent = (idx + 1) * (100 / TOTAL_BLOCKS)
+                  const isCommitted = activeDef.value >= blockPercent
+                  const isHovered = hoverProgress !== null && hoverProgress >= blockPercent
+
+                  let bgColor = 'var(--bg-muted)'
+                  let borderColor = 'var(--border-default)'
+
+                  if (hoverProgress !== null) {
+                    if (hoverProgress >= activeDef.value) {
+                      if (isCommitted) {
+                        bgColor = themeColor
+                        borderColor = themeColor
+                      } else if (isHovered) {
+                        bgColor = isComplete ? '#57D9A3' : '#4C9AFF'
+                        borderColor = isComplete ? '#36B37E' : '#2684FF'
+                      }
+                    } else {
+                      if (isHovered) {
+                        bgColor = themeColor
+                        borderColor = themeColor
+                      } else if (isCommitted) {
+                        bgColor = 'rgba(222, 53, 11, 0.22)'
+                        borderColor = 'rgba(222, 53, 11, 0.4)'
+                      }
+                    }
+                  } else {
+                    if (isCommitted) {
+                      bgColor = isComplete ? '#00875A' : '#0052CC'
+                      borderColor = isComplete ? '#00875A' : '#0052CC'
+                    }
+                  }
+
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => {
+                        activeDef.setter(blockPercent)
+                        setHoverProgress(null)
+                      }}
+                      onMouseEnter={() => setHoverProgress(blockPercent)}
+                      title={`点击设置 ${activeDef.label} 为 ${blockPercent}%`}
+                      style={{
+                        height: '100%',
+                        backgroundColor: bgColor,
+                        border: `1px solid ${borderColor}`,
+                        borderRadius: '2px',
+                        cursor: 'pointer',
+                        transition: 'all 0.1s ease',
+                      }}
+                    />
+                  )
+                })}
               </div>
 
-              <div>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: '11.5px',
-                    fontWeight: 600,
-                    color: 'var(--text-secondary)',
-                    marginBottom: '4px',
-                  }}
-                >
-                  进度状态
-                </label>
-                <select
-                  data-ui="select"
-                  value={progressStatus}
-                  onChange={(e) => setProgressStatus(e.target.value)}
-                  style={{ height: '30px', fontSize: '12px', fontWeight: 500 }}
-                >
-                  <option value="正常">正常</option>
-                  <option value="有风险">有风险</option>
-                  <option value="已延期">已延期</option>
-                  <option value="阻塞">阻塞</option>
-                </select>
+              {/* 刻度标识与上周基准微调 (定高 24px) */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  fontSize: '11px',
+                  color: 'var(--text-muted)',
+                  fontFamily: 'var(--font-mono)',
+                  height: '24px',
+                  marginTop: '4px',
+                }}
+              >
+                <span>0%</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '22px', minWidth: '110px' }}>
+                  {activeTargetKey === 'total' ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span>上周基准:</span>
+                      <input
+                        data-ui="input"
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={lastWeekProgress}
+                        onChange={(e) => setLastWeekProgress(Number(e.target.value))}
+                        style={{
+                          width: '44px',
+                          height: '22px',
+                          textAlign: 'center',
+                          fontSize: '11.5px',
+                          fontWeight: 600,
+                          fontFamily: 'var(--font-mono)',
+                          padding: '1px',
+                          borderRadius: 'var(--radius-sm)',
+                        }}
+                      />
+                      <span>%</span>
+                    </div>
+                  ) : (
+                    <span style={{ color: 'var(--text-muted)' }}>阶段目标: 100%</span>
+                  )}
+                </div>
+                <span>100%</span>
               </div>
             </div>
           </div>
+
+          {/* 业务属性信息 */}
+          {(pr?.clientName || pr?.category || pr?.productManager || pr?.demandType || pr?.techSolutionDesc) && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                padding: '10px 12px',
+                backgroundColor: 'var(--bg-app)',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-subtle)',
+                fontSize: '11.5px',
+                color: 'var(--text-secondary)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                  gap: '6px 12px',
+                }}
+              >
+                {pr?.clientName && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Building2 size={12} style={{ color: 'var(--text-muted)' }} />
+                    <span>客户: {pr.clientName}</span>
+                  </div>
+                )}
+                {pr?.category && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Tag size={12} style={{ color: 'var(--text-muted)' }} />
+                    <span>分类: {pr.category}</span>
+                  </div>
+                )}
+                {pr?.productManager && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <User size={12} style={{ color: 'var(--text-muted)' }} />
+                    <span>PM: {pr.productManager.displayName}</span>
+                  </div>
+                )}
+                {pr?.demandType && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <FileText size={12} style={{ color: 'var(--text-muted)' }} />
+                    <span>类型: {pr.demandType}</span>
+                  </div>
+                )}
+              </div>
+
+              {pr?.techSolutionDesc && (
+                <div
+                  style={{
+                    paddingTop: '6px',
+                    borderTop: '1px solid var(--border-subtle)',
+                    lineHeight: 1.4,
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  <span style={{ fontWeight: 600, color: 'var(--text-muted)', marginRight: '4px' }}>
+                    方案/难度说明:
+                  </span>
+                  {pr.techSolutionDesc}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* 本周进展备注 */}
           <div>
@@ -497,12 +661,12 @@ export const WeeklyProgressModal: React.FC<WeeklyProgressModalProps> = ({
                 fontSize: '12px',
                 fontWeight: 600,
                 color: 'var(--text-primary)',
-                marginBottom: '4px',
+                marginBottom: '6px',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <MessageSquare size={13} style={{ color: 'var(--text-muted)' }} />
-                <span>进展备注</span>
+                <span>本周进展备注</span>
               </div>
               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>选填</span>
             </label>
@@ -514,10 +678,11 @@ export const WeeklyProgressModal: React.FC<WeeklyProgressModalProps> = ({
               onChange={(e) => setComment(e.target.value)}
               style={{
                 width: '100%',
-                padding: '6px 10px',
-                fontSize: '12px',
+                padding: '8px 12px',
+                fontSize: '12.5px',
                 lineHeight: '1.4',
                 resize: 'none',
+                borderRadius: 'var(--radius-sm)',
               }}
             />
           </div>
@@ -541,7 +706,7 @@ export const WeeklyProgressModal: React.FC<WeeklyProgressModalProps> = ({
 
             <div
               style={{
-                height: '115px',
+                height: '110px',
                 overflowY: 'auto',
                 border: '1px solid var(--border-subtle)',
                 borderRadius: 'var(--radius-sm)',
@@ -552,18 +717,7 @@ export const WeeklyProgressModal: React.FC<WeeklyProgressModalProps> = ({
                 gap: '5px',
               }}
             >
-              {loadingComments && (
-                <div
-                  style={{
-                    fontSize: '11.5px',
-                    color: 'var(--text-muted)',
-                    textAlign: 'center',
-                    padding: '20px 0',
-                  }}
-                >
-                  加载中...
-                </div>
-              )}
+              {loadingComments && <ModalCommentsSkeleton />}
 
               {!loadingComments && comments.length === 0 && (
                 <div
@@ -587,9 +741,9 @@ export const WeeklyProgressModal: React.FC<WeeklyProgressModalProps> = ({
                       key={c.id}
                       style={{
                         fontSize: '11.5px',
-                        padding: '5px 8px',
+                        padding: '6px 10px',
                         backgroundColor: 'var(--bg-surface)',
-                        borderRadius: '4px',
+                        borderRadius: 'var(--radius-sm)',
                         border: '1px solid var(--border-subtle)',
                       }}
                     >
@@ -619,7 +773,7 @@ export const WeeklyProgressModal: React.FC<WeeklyProgressModalProps> = ({
                         style={{
                           color: 'var(--text-primary)',
                           whiteSpace: 'pre-wrap',
-                          lineHeight: 1.35,
+                          lineHeight: 1.4,
                         }}
                       >
                         {c.body}

@@ -3,6 +3,7 @@
 @import './styles/reset.css';
 @import './styles/shell.css';
 @import './styles/components/buttons.css';
+@import './styles/components/toolbar.css';
 @import './styles/components/cards.css';
 @import './styles/components/tables.css';
 @import './styles/components/forms.css';
@@ -11,3 +12,4 @@
 @import './styles/components/timeline.css';
 @import './styles/components/datepicker.css';
 @import './styles/components/skeleton.css';
+@import './styles/mobile.css';

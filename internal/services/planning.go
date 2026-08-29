@@ -258,6 +258,9 @@ func (s *PlanningService) ConvertIssue(raw jira.Issue) models.IssueItem {
 							pr.LatestComment = body
 							hasPR = true
 						}
+						if created, ok := lastComment["created"].(string); ok {
+							pr.LatestCommentTime = created
+						}
 					}
 				}
 			}

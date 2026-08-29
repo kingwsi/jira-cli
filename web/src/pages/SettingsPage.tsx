@@ -69,10 +69,10 @@ export const SettingsPage: React.FC = () => {
   }
 
   return (
-    <div data-ui="page-content" style={{ maxWidth: '800px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+    <div data-ui="page-content" data-page="settings" style={{ maxWidth: '800px' }}>
+      <div data-ui="page-heading" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
         <Settings size={20} color="var(--color-primary)" />
-        <h2 style={{ fontSize: '18px', fontWeight: 700 }}>系统与 Jira 接入配置</h2>
+        <h2 style={{ fontSize: '16px', fontWeight: 700 }}>系统与 Jira 接入配置</h2>
       </div>
 
       <div data-ui="card" style={{ marginBottom: '24px' }}>

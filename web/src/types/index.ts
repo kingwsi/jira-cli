@@ -17,6 +17,7 @@ export interface ProgressReport {
   deployProgress?: number
   techSolutionDesc?: string
   latestComment?: string
+  latestCommentTime?: string
   category?: string
   demandType?: string
   clientName?: string

@@ -1,0 +1,642 @@
+/* Mobile interaction layer
+   The desktop information density stays intact; narrow screens get thumb-first
+   navigation, card-based work queues, and bottom-sheet editing surfaces. */
+
+@media (max-width: 760px) {
+  :root {
+    --mobile-nav-height: 66px;
+    --mobile-page-gutter: 12px;
+  }
+
+  html,
+  body,
+  #root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-padding-bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom));
+  }
+
+  body {
+    overscroll-behavior-y: none;
+  }
+
+  [data-ui="admin-shell"] {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  [data-ui="top-nav"] {
+    height: 52px;
+    padding: 0 var(--mobile-page-gutter);
+    padding-top: env(safe-area-inset-top);
+    gap: 10px;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  [data-ui="top-nav-left"] {
+    gap: 0;
+    min-width: 0;
+  }
+
+  [data-ui="top-nav-brand"] {
+    flex-shrink: 0;
+  }
+
+  [data-ui="top-nav-title"],
+  [data-ui="current-user"] {
+    display: none !important;
+  }
+
+  [data-ui="top-nav-right"] {
+    flex: 1;
+    min-width: 0;
+    justify-content: flex-end;
+  }
+
+  [data-ui="top-nav-settings"] {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: #ffffff;
+  }
+
+  [data-ui="top-nav-settings"]:hover,
+  [data-ui="top-nav-settings"].active {
+    background: transparent;
+  }
+
+  [data-ui="top-nav-settings"] span {
+    display: none;
+  }
+
+  [data-ui="top-nav-settings"] svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  [data-ui="top-nav-links"] {
+    position: fixed;
+    z-index: 45;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom));
+    padding: 0 0 env(safe-area-inset-bottom);
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border-default);
+    box-shadow: 0 -6px 20px rgba(9, 30, 66, 0.1);
+  }
+
+  [data-ui="top-nav-item"] {
+    position: relative;
+    min-width: 0;
+    height: 100%;
+    min-height: var(--mobile-nav-height);
+    padding: 6px 2px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    border-radius: 0;
+    color: var(--text-muted);
+    font-size: 10px;
+    line-height: 1.1;
+    text-align: center;
+  }
+
+  [data-ui="top-nav-item"] svg {
+    width: 20px;
+    height: 20px;
+    stroke-width: 2;
+  }
+
+  [data-ui="top-nav-item"]:hover {
+    background: var(--bg-surface-hover);
+    color: var(--text-primary);
+  }
+
+  [data-ui="top-nav-item"].active {
+    background: var(--bg-info-subtle);
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+  [data-ui="admin-main"] {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+    padding-bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom));
+  }
+
+  [data-ui="page-content"] {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+    padding: 12px var(--mobile-page-gutter) 20px;
+    gap: 12px !important;
+  }
+
+  [data-ui="page-content"] > *,
+  [data-page] > * {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  [data-page] img,
+  [data-page] canvas {
+    max-width: 100%;
+  }
+
+  [data-ui="button"],
+  [data-ui="button"][data-size="sm"] {
+    min-height: 42px;
+    padding: 8px 12px;
+  }
+
+  [data-ui="input"],
+  [data-ui="select"] {
+    min-height: 44px;
+    font-size: 16px !important;
+  }
+
+  [data-ui="textarea"] {
+    min-height: 112px;
+    font-size: 16px;
+  }
+
+  [data-mobile-visibility="secondary-filter"],
+  [data-mobile-visibility="page-search"],
+  [data-mobile-visibility="detail"] {
+    display: none !important;
+  }
+
+  [data-mobile-role="primary-tabs"] {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: hidden;
+  }
+
+  [data-mobile-role="primary-tabs"] [data-ui="button"] {
+    width: 100%;
+    min-width: 0 !important;
+    min-height: 48px;
+    padding: 8px 6px;
+    gap: 7px !important;
+  }
+
+  [data-mobile-role="primary-tabs"] [data-ui="button"] > svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  [data-mobile-role="tab-label"] {
+    display: none;
+  }
+
+  [data-mobile-role="tab-count"] {
+    min-width: 20px;
+    min-height: 20px;
+    padding: 2px 6px !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0 !important;
+    line-height: 1;
+  }
+
+  [data-mobile-role="tab-count"]::after {
+    content: attr(data-count);
+    font-size: 11px;
+  }
+
+  [data-ui="button-group"] {
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  [data-ui="button-group"]::-webkit-scrollbar {
+    display: none;
+  }
+
+  [data-ui="button-group"] [data-ui="button"] {
+    flex: 1 0 auto;
+    min-width: max-content;
+  }
+
+  /* Toolbars become stacked control trays. Inline widths are intentionally
+     overridden so search, selects, and period controls remain finger-friendly. */
+  [data-page] > div:first-child:not([data-ui="card"]) {
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  [data-page] > div:first-child:not([data-ui="card"]) > div {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  [data-page="tasks"] > div:first-child > div:first-child,
+  [data-page="requirements"] > div:first-child > div:first-child,
+  [data-page="bugs"] > div:first-child > div:first-child,
+  [data-page="planning"] > div:first-child > div:first-child,
+  [data-page="worklogs"] > div:first-child > div:first-child {
+    width: 100%;
+    gap: 8px !important;
+  }
+
+  [data-page="tasks"] > div:first-child > div:first-child > *,
+  [data-page="requirements"] > div:first-child > div:first-child > *,
+  [data-page="bugs"] > div:first-child > div:first-child > *,
+  [data-page="planning"] > div:first-child > div:first-child > *,
+  [data-page="worklogs"] > div:first-child > div:first-child > * {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  [data-page="tasks"] > div:first-child input,
+  [data-page="tasks"] > div:first-child select,
+  [data-page="requirements"] > div:first-child input,
+  [data-page="requirements"] > div:first-child select,
+  [data-page="bugs"] > div:first-child input,
+  [data-page="bugs"] > div:first-child select,
+  [data-page="worklogs"] > div:first-child input {
+    width: 100% !important;
+  }
+
+  [data-page="tasks"] > div:first-child > div:last-child,
+  [data-page="requirements"] > div:first-child > div:last-child,
+  [data-page="bugs"] > div:first-child > div:last-child,
+  [data-page="planning"] > div:first-child > div:last-child,
+  [data-page="worklogs"] > div:first-child > div:last-child {
+    width: 100%;
+    justify-content: space-between !important;
+  }
+
+  /* The desktop card board uses a 380px minimum column. On phones that value
+     is wider than the content box after gutters, so force a true fluid column. */
+  [data-page="requirements"] [style*="minmax(380px"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  [data-page="requirements"] [data-ui="card"],
+  [data-page="requirements"] [data-ui="card"] > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  [data-page] [style*="position: absolute"][style*="width: 260px"] {
+    width: min(260px, calc(100vw - 24px)) !important;
+    max-width: calc(100vw - 24px);
+  }
+
+  /* Dense desktop tables become independent work cards. */
+  [data-mobile-table] {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  [data-mobile-table] [data-ui="table"],
+  [data-mobile-table] tbody,
+  [data-mobile-table] tr,
+  [data-mobile-table] td {
+    display: block;
+    width: 100%;
+  }
+
+  [data-mobile-table] thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  [data-mobile-table] tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  [data-mobile-table] tbody tr {
+    position: relative;
+    padding: 42px 12px 10px;
+    border: 1px solid var(--border-default);
+    border-radius: 10px;
+    background: var(--bg-surface) !important;
+    box-shadow: 0 2px 7px rgba(9, 30, 66, 0.07);
+    opacity: 1 !important;
+  }
+
+  [data-mobile-table] tbody tr:active {
+    transform: scale(0.995);
+    background: var(--bg-surface-hover) !important;
+  }
+
+  [data-mobile-table] td {
+    min-height: 30px;
+    padding: 6px 0 6px 92px !important;
+    border: 0;
+    font-size: 13px;
+    text-align: left !important;
+  }
+
+  [data-mobile-table] td::before {
+    position: absolute;
+    left: 12px;
+    width: 72px;
+    content: '';
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  [data-mobile-table] td:first-child {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    width: auto;
+    min-height: 24px;
+    padding: 0 !important;
+  }
+
+  [data-mobile-table] td:first-child::before {
+    display: none;
+  }
+
+  [data-mobile-table] td:nth-child(2) {
+    padding-left: 0 !important;
+    padding-bottom: 10px !important;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 14px;
+  }
+
+  [data-mobile-table] td:nth-child(2)::before {
+    display: none;
+  }
+
+  [data-mobile-table] td:last-child {
+    padding: 8px 0 0 !important;
+    margin-top: 4px;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  [data-mobile-table] td:last-child::before {
+    display: none;
+  }
+
+  [data-mobile-table] td:last-child [data-ui="button"] {
+    width: 100%;
+  }
+
+  [data-mobile-table] td[colspan] {
+    position: static;
+    padding: 28px 12px !important;
+    margin: 0;
+    border: 0;
+    text-align: center !important;
+  }
+
+  [data-mobile-table] td[colspan]::before {
+    display: none;
+  }
+
+  [data-mobile-table="tasks"] td:nth-child(3)::before { content: '类型'; }
+  [data-mobile-table="tasks"] td:nth-child(4)::before { content: '状态'; }
+  [data-mobile-table="tasks"] td:nth-child(5)::before { content: '经办人'; }
+  [data-mobile-table="tasks"] td:nth-child(6)::before { content: '开始'; }
+  [data-mobile-table="tasks"] td:nth-child(7)::before { content: '结束'; }
+  [data-mobile-table="tasks"] td:nth-child(8)::before { content: '工时'; }
+
+  [data-mobile-table="requirements"] td:nth-child(2) {
+    position: absolute;
+    top: 11px;
+    right: 12px;
+    width: auto;
+    padding: 0 !important;
+    border: 0;
+  }
+  [data-mobile-table="requirements"] td:nth-child(3) {
+    padding-left: 0 !important;
+    padding-bottom: 10px !important;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 14px;
+  }
+  [data-mobile-table="requirements"] td:nth-child(3)::before { display: none; }
+  [data-mobile-table="requirements"] td:nth-child(4)::before { content: '状态'; }
+  [data-mobile-table="requirements"] td:nth-child(5)::before { content: '优先级'; }
+  [data-mobile-table="requirements"] td:nth-child(6)::before { content: '经办人'; }
+  [data-mobile-table="requirements"] td:nth-child(7)::before { content: '报告人'; }
+  [data-mobile-table="requirements"] td:nth-child(8)::before { content: '更新于'; }
+
+  [data-mobile-table="bugs"] td:nth-child(3)::before { content: '严重级别'; }
+  [data-mobile-table="bugs"] td:nth-child(4)::before { content: '状态'; }
+  [data-mobile-table="bugs"] td:nth-child(5)::before { content: '经办人'; }
+  [data-mobile-table="bugs"] td:nth-child(6)::before { content: '报告人'; }
+  [data-mobile-table="bugs"] td:nth-child(7)::before { content: '预计解决'; }
+
+  /* Timelines keep native horizontal exploration, with a task column sized for
+     a phone and a stable viewport that does not hide behind bottom navigation. */
+  [data-ui="gantt-container"] {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: calc(100dvh - 150px - var(--mobile-nav-height) - env(safe-area-inset-bottom));
+    min-height: 440px;
+    border-radius: 8px;
+  }
+
+  [data-ui="gantt-title-col"] {
+    width: 224px;
+    min-width: 224px;
+    max-width: 224px;
+    padding: 0 10px;
+  }
+
+  [data-ui="gantt-viewport"] {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overscroll-behavior-x: contain;
+  }
+
+  [data-ui="gantt-header-pressure-row"] [data-ui="gantt-title-col"] {
+    padding: 0 8px;
+  }
+
+  [data-ui="gantt-tooltip"] {
+    display: none;
+  }
+
+  /* Drawers become bottom workspaces. The drag handle and sticky actions make
+     closing/saving obvious without stretching to the top-right corner. */
+  [data-ui="modal-backdrop"] {
+    align-items: flex-end;
+    padding: 0;
+    backdrop-filter: none;
+  }
+
+  [data-ui="quick-resolve-popover"] {
+    left: 12px !important;
+    right: 12px !important;
+    bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom) + 8px) !important;
+    top: auto !important;
+    width: auto !important;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - var(--mobile-nav-height) - env(safe-area-inset-bottom) - 20px);
+    overflow-y: auto !important;
+    transform: none !important;
+  }
+
+  [data-ui="drawer-content"],
+  [data-ui="modal-content"] {
+    top: auto !important;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100% !important;
+    max-width: none !important;
+    height: min(92dvh, 860px);
+    max-height: calc(100dvh - env(safe-area-inset-top) - 8px) !important;
+    border: 0;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -12px 34px rgba(9, 30, 66, 0.24);
+    animation: mobile-sheet-enter 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  [data-ui="drawer-content"]::before,
+  [data-ui="modal-content"]::before {
+    content: '';
+    position: absolute;
+    z-index: 2;
+    top: 7px;
+    left: 50%;
+    width: 38px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border-strong);
+    transform: translateX(-50%);
+  }
+
+  [data-ui="modal-header"],
+  [data-ui="drawer-header"] {
+    min-height: 58px;
+    padding: 17px 12px 10px;
+    gap: 8px;
+  }
+
+  [data-ui="modal-body"],
+  [data-ui="drawer-body"] {
+    padding: 14px 12px;
+    overscroll-behavior: contain;
+  }
+
+  [data-ui="modal-footer"],
+  [data-ui="drawer-footer"] {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 -6px 16px rgba(9, 30, 66, 0.08);
+  }
+
+  [data-ui="modal-footer"] [data-ui="button"],
+  [data-ui="drawer-footer"] [data-ui="button"] {
+    flex: 1;
+  }
+
+  [data-ui="drawer-body"] [style*="grid-template-columns: 1fr 1fr"],
+  [data-ui="modal-body"] [style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  [data-ui="card"] {
+    padding: 14px 12px;
+    border-radius: 8px;
+  }
+
+  [data-ui="card-header"] {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  [data-page="settings"] > div:first-child h2 {
+    font-size: 17px !important;
+  }
+
+  [data-page="settings"] [data-ui="card-header"] {
+    flex-direction: column;
+  }
+
+  [data-page="settings"] form > div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+  }
+
+  .react-datepicker-popper {
+    position: fixed !important;
+    inset: auto 8px calc(var(--mobile-nav-height) + env(safe-area-inset-bottom) + 8px) 8px !important;
+    transform: none !important;
+  }
+
+  .react-datepicker {
+    width: 100%;
+  }
+
+  .react-datepicker__month-container {
+    width: 100%;
+  }
+
+  .react-datepicker__day-name,
+  .react-datepicker__day {
+    width: calc((100vw - 48px) / 7);
+    line-height: 40px;
+  }
+
+  @keyframes mobile-sheet-enter {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+}
+
+@media (max-width: 380px) {
+  [data-ui="top-nav-item"] {
+    font-size: 9px;
+  }
+
+  [data-ui="gantt-title-col"] {
+    width: 196px;
+    min-width: 196px;
+    max-width: 196px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-ui="drawer-content"],
+  [data-ui="modal-content"],
+  [data-mobile-table] tbody tr {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -5,10 +5,7 @@ import {
   Search,
   ExternalLink,
   AlertTriangle,
-  Layers,
-  Clock,
   Sparkles,
-  Edit3,
   MessageSquare,
   CheckCircle2,
   Building2,
@@ -21,10 +18,9 @@ import {
 import { api } from '../api/client'
 import { IssueItem } from '../types'
 import { TaskDrawer } from '../components/TaskDrawer'
-import { TaskOrderDrawer } from '../components/TaskOrderDrawer'
 import { WeeklyProgressModal } from '../components/WeeklyProgressModal'
 import { QuickResolveModal } from '../components/QuickResolveModal'
-import { TableSkeleton } from '../components/Skeleton'
+import { TableSkeleton, TaskOrdersCardSkeleton } from '../components/Skeleton'
 
 export interface RequirementsPageProps {
   embedded?: boolean
@@ -61,6 +57,24 @@ const DEFAULT_STATUS_LIST = [
   '等待开发',
 ]
 
+function isDateInCurrentWeek(dateStr?: string): boolean {
+  if (!dateStr) return false
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return false
+
+  const now = new Date()
+  const currentDay = now.getDay() === 0 ? 7 : now.getDay()
+  const monday = new Date(now)
+  monday.setDate(now.getDate() - currentDay + 1)
+  monday.setHours(0, 0, 0, 0)
+
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  sunday.setHours(23, 59, 59, 999)
+
+  return d >= monday && d <= sunday
+}
+
 export const RequirementsPage: React.FC<RequirementsPageProps> = ({
   embedded = false,
   onCountChange,
@@ -89,7 +103,7 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
           setJiraUrl(cfg.url.replace(/\/+$/, ''))
         }
       })
-      .catch(() => {})
+      .catch(() => { })
   }, [])
 
   const buildJql = () => {
@@ -166,13 +180,6 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
     )
   }, [filteredIssues])
 
-  // 统计指标
-  const typeCounts = useMemo(() => {
-    const demandCount = issues.filter((i) => i.issueType === '一般需求' || i.issueType.includes('需求')).length
-    const assistCount = issues.filter((i) => i.issueType === '协助').length
-    return { demandCount, assistCount, specialCount: specialTaskOrders.length }
-  }, [issues, specialTaskOrders])
-
   const openJira = (key: string, e: React.MouseEvent) => {
     e.stopPropagation()
     if (!jiraUrl) return
@@ -219,10 +226,12 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
   return (
     <div
       data-ui={embedded ? undefined : 'page-content'}
+      data-page="requirements"
       style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
     >
       {/* 顶部工具栏 */}
       <div
+        data-ui="page-toolbar"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -231,8 +240,9 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
           gap: '12px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        <div data-ui="toolbar-main" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <div
+            data-ui="page-heading"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -246,63 +256,10 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
             <span>需求与协作</span>
           </div>
 
-          {/* 统计指标胶囊 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
-            <span
-              style={{
-                backgroundColor: 'rgba(0, 82, 204, 0.08)',
-                color: '#0052CC',
-                border: '1px solid rgba(0, 82, 204, 0.2)',
-                padding: '2px 8px',
-                borderRadius: '12px',
-                fontWeight: 600,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-              }}
-            >
-              <Layers size={12} />
-              需求: {typeCounts.demandCount}
-            </span>
-            <span
-              style={{
-                backgroundColor: 'rgba(101, 84, 192, 0.08)',
-                color: '#6554C0',
-                border: '1px solid rgba(101, 84, 192, 0.2)',
-                padding: '2px 8px',
-                borderRadius: '12px',
-                fontWeight: 600,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-              }}
-            >
-              <Clock size={12} />
-              协助: {typeCounts.assistCount}
-            </span>
-            {specialTaskOrders.length > 0 && (
-              <span
-                style={{
-                  backgroundColor: 'rgba(0, 135, 90, 0.08)',
-                  color: '#00875A',
-                  border: '1px solid rgba(0, 135, 90, 0.2)',
-                  padding: '2px 8px',
-                  borderRadius: '12px',
-                  fontWeight: 600,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
-                <Sparkles size={12} />
-                专项任务令: {specialTaskOrders.length}
-              </span>
-            )}
-          </div>
-
           {/* 类型筛选 */}
           <select
             data-ui="select"
+            data-mobile-visibility="secondary-filter"
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value as any)}
             style={{ width: '130px', fontSize: '12.5px' }}
@@ -315,6 +272,7 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
           {/* 人员筛选 */}
           <select
             data-ui="select"
+            data-mobile-visibility="secondary-filter"
             value={assigneeFilter}
             onChange={(e) => setAssigneeFilter(e.target.value as any)}
             style={{ width: '130px', fontSize: '12.5px' }}
@@ -326,6 +284,7 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
           {/* 状态范围筛选 */}
           <select
             data-ui="select"
+            data-mobile-visibility="secondary-filter"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
             style={{ width: '135px', fontSize: '12.5px' }}
@@ -335,7 +294,11 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
           </select>
 
           {/* 搜索框 */}
-          <div data-ui="search-input" style={{ width: '220px' }}>
+          <div
+            data-ui="search-input"
+            data-mobile-visibility="page-search"
+            style={{ width: '220px' }}
+          >
             <Search size={14} />
             <input
               data-ui="input"
@@ -347,11 +310,16 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
           </div>
         </div>
 
-        <button data-ui="button" onClick={loadRequirements} disabled={loading}>
-          <RotateCcw size={14} className={loading ? 'vbg-spinner' : ''} />
-          <span>刷新 ({filteredIssues.length})</span>
-        </button>
+        <div data-ui="toolbar-actions">
+          <button data-ui="button" onClick={loadRequirements} disabled={loading}>
+            <RotateCcw size={14} className={loading ? 'vbg-spinner' : ''} />
+            <span>刷新 ({filteredIssues.length})</span>
+          </button>
+        </div>
       </div>
+
+      {/* 加载中的专项任务令卡片骨架屏 */}
+      {loading && <TaskOrdersCardSkeleton count={2} />}
 
       {/* 专项任务令专属置顶卡片区 */}
       {specialTaskOrders.length > 0 && !loading && (
@@ -405,139 +373,90 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
                     gap: '12px',
                   }}
                 >
-                  {/* 头部：标题与状态 + 快捷查看详情入口 */}
+                  {/* 头部：Key + 标题 + 状态 处于同一行，右侧为详情入口 */}
                   <div>
                     <div
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        gap: '8px',
-                        marginBottom: '8px',
+                        gap: '10px',
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                        {/* Key：无背景无边框，仅保留跳转与 icon */}
                         <span
                           onClick={(e) => openJira(item.key, e)}
                           title="在 Jira 中打开"
                           style={{
                             fontWeight: 700,
-                            fontSize: '12px',
+                            fontSize: '12.5px',
                             fontFamily: 'var(--font-mono)',
-                            color: '#00875A',
-                            backgroundColor: 'rgba(0, 135, 90, 0.08)',
-                            border: '1px solid rgba(0, 135, 90, 0.2)',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
+                            color: '#0052CC',
                             cursor: 'pointer',
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '3px',
+                            flexShrink: 0,
                           }}
                         >
                           {item.key}
-                          <ExternalLink size={10} />
+                          <ExternalLink size={11} />
                         </span>
+
+                        {/* 标题 */}
                         <span
                           style={{
-                            fontSize: '11px',
-                            padding: '1px 6px',
-                            borderRadius: '4px',
-                            backgroundColor: 'var(--bg-muted)',
-                            color: 'var(--text-secondary)',
+                            fontSize: '14px',
                             fontWeight: 600,
+                            color: 'var(--text-primary)',
+                            cursor: 'pointer',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
                           }}
+                          onClick={() => setWeeklyModalIssue(item)}
+                          title={item.summary}
                         >
-                          任务令
+                          {item.summary}
                         </span>
+
+                        {/* 状态 Tag */}
                         <span
                           data-ui="tag"
                           style={{
                             fontSize: '11px',
                             padding: '1px 6px',
                             fontWeight: 600,
+                            flexShrink: 0,
                           }}
                         >
                           {item.status}
                         </span>
                       </div>
 
-                      {/* 右上角：状态指示器 + 详情icon按钮 */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span
-                          style={{
-                            fontSize: '11.5px',
-                            fontWeight: 600,
-                            padding: '2px 8px',
-                            borderRadius: '12px',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            backgroundColor:
-                              pr?.progressStatus === '正常' || !pr?.progressStatus
-                                ? 'var(--bg-success-subtle)'
-                                : pr?.progressStatus === '已延期' || pr?.progressStatus === '阻塞'
-                                ? 'var(--bg-danger-subtle)'
-                                : 'var(--bg-warning-subtle)',
-                            color:
-                              pr?.progressStatus === '正常' || !pr?.progressStatus
-                                ? 'var(--color-success)'
-                                : pr?.progressStatus === '已延期' || pr?.progressStatus === '阻塞'
-                                ? 'var(--color-danger)'
-                                : 'var(--color-warning)',
-                            border:
-                              pr?.progressStatus === '正常' || !pr?.progressStatus
-                                ? '1px solid var(--border-success)'
-                                : pr?.progressStatus === '已延期' || pr?.progressStatus === '阻塞'
-                                ? '1px solid var(--border-danger)'
-                                : '1px solid var(--border-warning)',
-                          }}
-                        >
-                          <span
-                            style={{
-                              width: '6px',
-                              height: '6px',
-                              borderRadius: '50%',
-                              backgroundColor: 'currentColor',
-                            }}
-                          />
-                          {pr?.progressStatus || '正常'}
-                        </span>
-
-                        <button
-                          data-ui="button"
-                          data-variant="ghost"
-                          onClick={() => setSelectedKey(item.key)}
-                          title="查看任务令详情"
-                          style={{
-                            padding: '3px',
-                            height: '24px',
-                            width: '24px',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            borderRadius: '4px',
-                            color: 'var(--text-secondary)',
-                            border: '1px solid var(--border-subtle)',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <ArrowUpRight size={14} />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        fontSize: '14.5px',
-                        fontWeight: 600,
-                        color: 'var(--text-primary)',
-                        cursor: 'pointer',
-                        lineHeight: 1.45,
-                      }}
-                      onClick={() => setSelectedKey(item.key)}
-                    >
-                      {item.summary}
+                      {/* 右上角：详情 icon 按钮 (打开进度与周报弹窗) */}
+                      <button
+                        data-ui="button"
+                        data-variant="ghost"
+                        onClick={() => setWeeklyModalIssue(item)}
+                        title="查看/更新任务令进度周报"
+                        style={{
+                          padding: '3px',
+                          height: '24px',
+                          width: '24px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: 'var(--radius-sm)',
+                          color: 'var(--text-secondary)',
+                          border: '1px solid var(--border-subtle)',
+                          cursor: 'pointer',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <ArrowUpRight size={14} />
+                      </button>
                     </div>
 
                     {/* 辅助属性 */}
@@ -668,78 +587,55 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
                       </div>
                     </div>
 
-                    {/* 双层叠影进度轨道 */}
+                    {/* 矩形块状进度条 (20段) */}
                     <div
                       style={{
-                        position: 'relative',
-                        height: '8px',
-                        backgroundColor: 'var(--border-default)',
-                        borderRadius: '4px',
-                        overflow: 'hidden',
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(20, 1fr)',
+                        gap: '2.5px',
+                        height: '10px',
                       }}
                     >
-                      {diff >= 0 ? (
-                        <>
-                          {/* 增量高亮推进层 */}
+                      {Array.from({ length: 20 }).map((_, idx) => {
+                        const blockPercent = (idx + 1) * 5
+                        const isCurFilled = curProgress >= blockPercent
+                        const isLastFilled = lastProgress >= blockPercent
+
+                        let bg = 'var(--bg-muted)'
+                        let border = 'var(--border-default)'
+
+                        if (diff >= 0) {
+                          if (isLastFilled) {
+                            bg = curProgress >= 100 ? '#00875A' : '#0052CC'
+                            border = curProgress >= 100 ? '#00875A' : '#0052CC'
+                          } else if (isCurFilled) {
+                            bg = curProgress >= 100 ? '#36B37E' : '#4C9AFF'
+                            border = curProgress >= 100 ? '#36B37E' : '#2684FF'
+                          }
+                        } else {
+                          if (isCurFilled) {
+                            bg = '#DE350B'
+                            border = '#DE350B'
+                          } else if (isLastFilled) {
+                            bg = 'rgba(222, 53, 11, 0.22)'
+                            border = 'rgba(222, 53, 11, 0.4)'
+                          }
+                        }
+
+                        return (
                           <div
+                            key={idx}
                             style={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
                               height: '100%',
-                              width: `${Math.min(100, Math.max(0, curProgress))}%`,
-                              backgroundColor: curProgress >= 100 ? '#36B37E' : '#4C9AFF',
-                              borderRadius: '4px',
-                              transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                              backgroundColor: bg,
+                              border: `1px solid ${border}`,
+                              borderRadius: '2px',
+                              transition: 'all 0.2s ease',
                             }}
-                            title={`当前总进度: ${curProgress}%`}
+                            title={`${blockPercent}%`}
                           />
-                          {/* 上周基准基础层 */}
-                          <div
-                            style={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              height: '100%',
-                              width: `${Math.min(100, Math.max(0, lastProgress))}%`,
-                              backgroundColor: curProgress >= 100 ? '#00875A' : '#0052CC',
-                              borderRadius: lastProgress >= curProgress ? '4px' : '4px 0 0 4px',
-                              transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                            }}
-                            title={`上周基准: ${lastProgress}%`}
-                          />
-                        </>
-                      ) : (
-                        <>
-                          {/* 回退警示虚影层 */}
-                          <div
-                            style={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              height: '100%',
-                              width: `${Math.min(100, Math.max(0, lastProgress))}%`,
-                              backgroundColor: 'rgba(222, 53, 11, 0.25)',
-                              borderRadius: '4px',
-                            }}
-                            title={`上周基准: ${lastProgress}%`}
-                          />
-                          {/* 当前实际推进层 */}
-                          <div
-                            style={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              height: '100%',
-                              width: `${Math.min(100, Math.max(0, curProgress))}%`,
-                              backgroundColor: '#DE350B',
-                              borderRadius: '4px',
-                              transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                            }}
-                            title={`当前总进度: ${curProgress}%`}
-                          />
-                        </>
-                      )}
+                        )
+                      })}
                     </div>
 
                     {/* 微型刻度与对比提示 */}
@@ -781,38 +677,93 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
                     </div>
                   </div>
 
-                  {/* 最新周报备注 */}
-                  {pr?.latestComment && (
-                    <div
-                      style={{
-                        fontSize: '12px',
-                        backgroundColor: 'rgba(9, 30, 66, 0.03)',
-                        border: '1px solid var(--border-subtle)',
-                        padding: '8px 10px',
-                        borderRadius: 'var(--radius-sm)',
-                        color: 'var(--text-secondary)',
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '6px',
-                      }}
-                    >
-                      <MessageSquare size={13} style={{ flexShrink: 0, marginTop: '2px', color: 'var(--text-muted)' }} />
+                  {/* 本周备注标识 */}
+                  {(() => {
+                    const isUpdatedThisWeek = isDateInCurrentWeek(pr?.latestCommentTime)
+
+                    if (isUpdatedThisWeek && pr?.latestComment) {
+                      return (
+                        <div
+                          style={{
+                            fontSize: '12px',
+                            backgroundColor: 'rgba(0, 135, 90, 0.04)',
+                            border: '1px solid rgba(0, 135, 90, 0.2)',
+                            padding: '8px 10px',
+                            borderRadius: 'var(--radius-sm)',
+                            color: 'var(--text-secondary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              color: '#00875A',
+                              backgroundColor: 'rgba(0, 135, 90, 0.12)',
+                              padding: '1.5px 6px',
+                              borderRadius: 'var(--radius-xs)',
+                              flexShrink: 0,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                            }}
+                          >
+                            <MessageSquare size={11} />
+                            本周已更新
+                          </span>
+                          <div
+                            style={{
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              lineHeight: 1.4,
+                              color: 'var(--text-primary)',
+                              flex: 1,
+                            }}
+                            title={pr.latestComment}
+                          >
+                            {pr.latestComment}
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    return (
                       <div
                         style={{
+                          fontSize: '11.5px',
+                          color: 'var(--text-muted)',
+                          backgroundColor: 'var(--bg-app)',
+                          border: '1px dashed var(--border-default)',
+                          padding: '6px 10px',
+                          borderRadius: 'var(--radius-sm)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
                           overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          lineHeight: 1.4,
                         }}
-                        title={pr.latestComment}
                       >
-                        <span style={{ fontWeight: 600, color: 'var(--text-primary)', marginRight: '4px' }}>
-                          最新进展:
-                        </span>
-                        {pr.latestComment}
+                        <MessageSquare size={12} style={{ opacity: 0.5, flexShrink: 0 }} />
+                        <span style={{ flexShrink: 0, color: 'var(--text-secondary)' }}>本周待更新</span>
+                        {pr?.latestComment && (
+                          <span
+                            style={{
+                              color: 'var(--text-muted)',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              fontSize: '11px',
+                            }}
+                            title={`往期备注: ${pr.latestComment}`}
+                          >
+                            (往期: {pr.latestComment})
+                          </span>
+                        )}
                       </div>
-                    </div>
-                  )}
+                    )
+                  })()}
 
                   {/* 操作按钮 */}
                   <div
@@ -839,8 +790,7 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
                         color: '#fff',
                       }}
                     >
-                      <Edit3 size={13} />
-                      <span>更新本周周报</span>
+                      <span>查看与更新</span>
                     </button>
                   </div>
                 </div>
@@ -884,16 +834,16 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
 
       {/* 需求列表表格 */}
       {!loading && !error && (
-        <div data-ui="table-container">
+        <div data-ui="table-container" data-mobile-table="requirements">
           <table data-ui="table">
             <thead>
               <tr>
-                <th style={{ width: '120px' }}>Key</th>
-                <th style={{ width: '90px' }}>类型</th>
-                <th>需求概要</th>
-                <th style={{ width: '110px' }}>状态</th>
+                <th style={{ width: '110px' }}>Key</th>
+                <th style={{ width: '80px' }}>类型</th>
+                <th>概要</th>
+                <th style={{ width: '100px' }}>状态</th>
                 <th style={{ width: '80px' }}>优先级</th>
-                <th style={{ width: '120px' }}>经办人</th>
+                <th style={{ width: '110px' }}>经办人</th>
                 <th style={{ width: '110px' }}>报告人</th>
                 <th style={{ width: '130px' }}>更新时间</th>
                 <th style={{ width: '110px', textAlign: 'center' }}>操作</th>
@@ -1118,34 +1068,16 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
         onResolved={loadRequirements}
       />
 
-      {/* 任务令专属详情抽屉 */}
-      {selectedKey && (() => {
-        const selectedIssue = issues.find((i) => i.key === selectedKey)
-        const isSelectedTaskOrder =
-          selectedIssue?.projectKey === 'YFJD' ||
-          selectedIssue?.issueType === '任务令' ||
-          Boolean(selectedIssue?.summary && selectedIssue.summary.includes('任务令'))
+      {/* 需求详情抽屉 (通用需求) */}
+      {selectedKey && (
+        <TaskDrawer
+          issueKey={selectedKey}
+          onClose={() => setSelectedKey(null)}
+          onUpdated={loadRequirements}
+        />
+      )}
 
-        if (isSelectedTaskOrder) {
-          return (
-            <TaskOrderDrawer
-              issueKey={selectedKey}
-              onClose={() => setSelectedKey(null)}
-              onUpdated={loadRequirements}
-            />
-          )
-        }
-
-        return (
-          <TaskDrawer
-            issueKey={selectedKey}
-            onClose={() => setSelectedKey(null)}
-            onUpdated={loadRequirements}
-          />
-        )
-      })()}
-
-      {/* 任务令专属周报更新弹窗 */}
+      {/* 任务令专属周报与多阶段进度弹窗 */}
       <WeeklyProgressModal
         issue={weeklyModalIssue}
         onClose={() => setWeeklyModalIssue(null)}

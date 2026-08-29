@@ -157,6 +157,11 @@ export const api = {
       currentProgress?: number
       lastWeekProgress?: number
       progressStatus?: string
+      productProgress?: number
+      devProgress?: number
+      testProgress?: number
+      releaseProgress?: number
+      deployProgress?: number
       comment?: string
     }
   ) => request<void>(`/issues/${key}/progress`, { method: 'POST', body: JSON.stringify(body) }),

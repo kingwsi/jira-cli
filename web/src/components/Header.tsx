@@ -5,43 +5,27 @@ import {
   CheckSquare,
   Clock,
   Settings,
-  Layers,
-  Search,
   User,
   FileText,
 } from 'lucide-react'
 import { api } from '../api/client'
 
-interface HeaderProps {
-  onSelectIssue?: (key: string) => void
-}
-
-export const Header: React.FC<HeaderProps> = ({ onSelectIssue }) => {
-  const [searchQuery, setSearchQuery] = useState('')
+export const Header: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null)
 
   useEffect(() => {
     api.getCurrentUser().then(setCurrentUser).catch(() => {})
   }, [])
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && searchQuery.trim() && onSelectIssue) {
-      onSelectIssue(searchQuery.trim().toUpperCase())
-    }
-  }
-
   return (
     <header data-ui="top-nav">
-      {/* 左侧：Logo 与 主导航菜单 */}
+      {/* 左侧：品牌标题与主导航菜单 */}
       <div data-ui="top-nav-left">
         <NavLink to="/tasks" data-ui="top-nav-brand">
-          <div data-ui="top-nav-logo">
-            <Layers size={16} />
-          </div>
           <span data-ui="top-nav-title">Jira Workbench</span>
         </NavLink>
 
-        <nav data-ui="top-nav-links">
+        <nav data-ui="top-nav-links" aria-label="主导航">
           <NavLink
             to="/tasks"
             data-ui="top-nav-item"
@@ -78,38 +62,13 @@ export const Header: React.FC<HeaderProps> = ({ onSelectIssue }) => {
             <span>工时填报</span>
           </NavLink>
 
-          <NavLink
-            to="/settings"
-            data-ui="top-nav-item"
-            className={({ isActive }) => (isActive ? 'active' : '')}
-          >
-            <Settings size={15} />
-            <span>系统设置</span>
-          </NavLink>
         </nav>
       </div>
 
-      {/* 右侧：全局搜索与用户信息 */}
+      {/* 右侧：连接用户与系统设置 */}
       <div data-ui="top-nav-right">
-        <div data-ui="search-input" style={{ width: '260px' }}>
-          <Search size={14} />
-          <input
-            data-ui="input"
-            placeholder="搜索任务 Key (如 DSYFB-123)..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={handleKeyDown}
-            style={{
-              height: '32px',
-              fontSize: '12px',
-              backgroundColor: 'rgba(255, 255, 255, 0.15)',
-              color: '#ffffff',
-              borderColor: 'rgba(255, 255, 255, 0.25)',
-            }}
-          />
-        </div>
-
         <div
+          data-ui="current-user"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -124,8 +83,18 @@ export const Header: React.FC<HeaderProps> = ({ onSelectIssue }) => {
           <User size={13} />
           <span>{currentUser?.displayName || currentUser?.name || '已连接'}</span>
         </div>
+
+        <NavLink
+          to="/settings"
+          data-ui="top-nav-settings"
+          className={({ isActive }) => (isActive ? 'active' : '')}
+          aria-label="系统设置"
+          title="系统设置"
+        >
+          <Settings size={16} />
+          <span>系统设置</span>
+        </NavLink>
       </div>
     </header>
   )
 }
-

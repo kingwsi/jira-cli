@@ -26,6 +26,8 @@
 [data-ui="gantt-header-row"] {
   display: flex;
   flex-direction: column;
+  width: max-content;
+  min-width: 100%;
   position: sticky;
   top: 0;
   z-index: 30;
@@ -36,12 +38,14 @@
 
 [data-ui="gantt-header-date-row"] {
   display: flex;
+  width: 100%;
   height: 42px;
   border-bottom: 1px solid rgba(9, 30, 66, 0.08);
 }
 
 [data-ui="gantt-header-pressure-row"] {
   display: flex;
+  width: 100%;
   height: 26px;
   background-color: #fafbfc;
 }
@@ -126,6 +130,7 @@
 /* 标头中的日期列表 */
 [data-ui="gantt-days-track"] {
   display: flex;
+  flex: 0 0 auto;
   height: 100%;
 }
 

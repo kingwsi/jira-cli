@@ -595,6 +595,11 @@ func (h *IssueHandler) UpdateWeeklyProgress(w http.ResponseWriter, r *http.Reque
 		CurrentProgress  *int   `json:"currentProgress"`
 		LastWeekProgress *int   `json:"lastWeekProgress"`
 		ProgressStatus   string `json:"progressStatus"`
+		ProductProgress  *int   `json:"productProgress"`
+		DevProgress      *int   `json:"devProgress"`
+		TestProgress     *int   `json:"testProgress"`
+		ReleaseProgress  *int   `json:"releaseProgress"`
+		DeployProgress   *int   `json:"deployProgress"`
 		Comment          string `json:"comment"`
 	}
 
@@ -618,6 +623,21 @@ func (h *IssueHandler) UpdateWeeklyProgress(w http.ResponseWriter, r *http.Reque
 	}
 	if req.ProgressStatus != "" {
 		fields["customfield_10808"] = map[string]string{"value": req.ProgressStatus}
+	}
+	if req.ProductProgress != nil {
+		fields["customfield_10809"] = *req.ProductProgress
+	}
+	if req.DevProgress != nil {
+		fields["customfield_10810"] = *req.DevProgress
+	}
+	if req.TestProgress != nil {
+		fields["customfield_10811"] = *req.TestProgress
+	}
+	if req.ReleaseProgress != nil {
+		fields["customfield_10812"] = *req.ReleaseProgress
+	}
+	if req.DeployProgress != nil {
+		fields["customfield_10813"] = *req.DeployProgress
 	}
 
 	if len(fields) > 0 {

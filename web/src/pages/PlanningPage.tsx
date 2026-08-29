@@ -808,9 +808,10 @@ export const PlanningPage: React.FC = () => {
   const trackWidth = monthDays.length * 40
 
   return (
-    <div data-ui="page-content" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+    <div data-ui="page-content" data-page="planning" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
       {/* 顶部工具栏 */}
       <div
+        data-ui="page-toolbar"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -819,13 +820,14 @@ export const PlanningPage: React.FC = () => {
           gap: '12px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+        <div data-ui="toolbar-main" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           {/* 月份选择器 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div data-ui="toolbar-period" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <button data-ui="button" data-size="sm" onClick={handlePrevMonth}>
               <ChevronLeft size={14} />
             </button>
             <div
+              data-ui="toolbar-control"
               style={{
                 fontSize: '13.5px',
                 fontWeight: 600,
@@ -860,6 +862,7 @@ export const PlanningPage: React.FC = () => {
 
           {/* 工作日与节假日统计徽章 */}
           <div
+            data-ui="toolbar-control"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -890,6 +893,7 @@ export const PlanningPage: React.FC = () => {
 
           {/* 预估 / 目标工时紧凑徽章 */}
           <div
+            data-ui="toolbar-control"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -1120,6 +1124,7 @@ export const PlanningPage: React.FC = () => {
 
           {/* 勾选框：显示父任务下所有子任务 */}
           <label
+            data-ui="toolbar-control"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -1147,7 +1152,7 @@ export const PlanningPage: React.FC = () => {
         </div>
 
         {/* 右侧：刷新 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div data-ui="toolbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button data-ui="button" onClick={loadData}>
             <RotateCcw size={14} />
             <span>刷新</span>
