@@ -3,6 +3,8 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/ws/jira-cli/internal/auth"
@@ -10,7 +12,7 @@ import (
 	"github.com/ws/jira-cli/internal/models"
 )
 
-const fieldsCacheTTL = 24 * time.Hour
+const fieldsCacheTTL = 7 * 24 * time.Hour // 每周自动同步一次 (7 天)
 
 type ConfigHandler struct {
 	cache *memoryCache
@@ -133,27 +135,90 @@ func (h *ConfigHandler) TestConnection(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func getFieldsCacheFilePath() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ".jira-workbench-fields.json"
+	}
+	return filepath.Join(home, ".jira-workbench-fields.json")
+}
+
+type fieldsDiskCache struct {
+	UpdatedAt time.Time        `json:"updated_at"`
+	Fields    []jira.FieldMeta `json:"fields"`
+}
+
 func (h *ConfigHandler) GetFields(w http.ResponseWriter, r *http.Request) {
-	if cached, ok := h.cache.Get("fields"); ok {
-		writeJSON(w, http.StatusOK, map[string]any{
-			"code": 0,
-			"data": cached,
-		})
-		return
+	force := r.URL.Query().Get("force") == "true"
+
+	if !force {
+		// 1. 尝试从内存缓存读取
+		if cached, ok := h.cache.Get("fields"); ok {
+			writeJSON(w, http.StatusOK, map[string]any{
+				"code": 0,
+				"data": cached,
+			})
+			return
+		}
+
+		// 2. 尝试从本地磁盘持久化缓存读取（有效期 7 天，每周同步一次）
+		if fileData, err := os.ReadFile(getFieldsCacheFilePath()); err == nil {
+			var diskCache fieldsDiskCache
+			if err := json.Unmarshal(fileData, &diskCache); err == nil && len(diskCache.Fields) > 0 {
+				if time.Since(diskCache.UpdatedAt) < fieldsCacheTTL {
+					h.cache.Set("fields", diskCache.Fields, fieldsCacheTTL)
+					writeJSON(w, http.StatusOK, map[string]any{
+						"code": 0,
+						"data": diskCache.Fields,
+					})
+					return
+				}
+			}
+		}
 	}
 
 	client, err := jira.NewClient()
 	if err != nil {
+		// 若连接失败但磁盘有缓存，降级返回历史缓存，保障页面可读
+		if fileData, readErr := os.ReadFile(getFieldsCacheFilePath()); readErr == nil {
+			var diskCache fieldsDiskCache
+			if unmarshalErr := json.Unmarshal(fileData, &diskCache); unmarshalErr == nil && len(diskCache.Fields) > 0 {
+				writeJSON(w, http.StatusOK, map[string]any{
+					"code": 0,
+					"data": diskCache.Fields,
+				})
+				return
+			}
+		}
 		writeError(w, http.StatusUnauthorized, err.Error())
 		return
 	}
 
 	fields, err := client.GetFields()
 	if err != nil {
+		// 同样尝试降级返回历史缓存
+		if fileData, readErr := os.ReadFile(getFieldsCacheFilePath()); readErr == nil {
+			var diskCache fieldsDiskCache
+			if unmarshalErr := json.Unmarshal(fileData, &diskCache); unmarshalErr == nil && len(diskCache.Fields) > 0 {
+				writeJSON(w, http.StatusOK, map[string]any{
+					"code": 0,
+					"data": diskCache.Fields,
+				})
+				return
+			}
+		}
 		writeError(w, http.StatusInternalServerError, "获取 Jira 字段列表失败: "+err.Error())
 		return
 	}
+
 	h.cache.Set("fields", fields, fieldsCacheTTL)
+
+	// 持久化至磁盘
+	diskData, _ := json.Marshal(fieldsDiskCache{
+		UpdatedAt: time.Now(),
+		Fields:    fields,
+	})
+	_ = os.WriteFile(getFieldsCacheFilePath(), diskData, 0600)
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"code": 0,

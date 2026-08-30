@@ -8,6 +8,8 @@ import {
   Project,
   Transition,
   CommentItem,
+  ReminderConfig,
+  ReminderPreview,
 } from '../types'
 
 const BASE_URL = '/api/v1'
@@ -84,7 +86,7 @@ export const api = {
   saveConfig,
   testConnection: (body: { url: string; username: string; password?: string }) =>
     request<any>('/config/test', { method: 'POST', body: JSON.stringify(body) }),
-  getFields: () => request<any[]>('/jira/fields'),
+  getFields: (force?: boolean) => request<any[]>(`/jira/fields${force ? '?force=true' : ''}`),
 
   // Projects & Users
   getProjects: () => request<Project[]>('/projects'),
@@ -204,4 +206,12 @@ export const api = {
   },
   addWorklog: (body: { issueKey: string; timeSpent: string; started?: string; comment?: string }) =>
     request<void>('/worklogs', { method: 'POST', body: JSON.stringify(body) }),
+
+  // Reminders
+  getReminderConfig: () => request<ReminderConfig>('/reminders/config'),
+  saveReminderConfig: (body: ReminderConfig) =>
+    request<ReminderConfig>('/reminders/config', { method: 'PUT', body: JSON.stringify(body) }),
+  previewReminders: () => request<ReminderPreview>('/reminders/preview', { method: 'POST' }),
+  sendRemindersNow: () => request<ReminderPreview>('/reminders/send-now', { method: 'POST' }),
+  testReminderChannels: () => request<void>('/reminders/test', { method: 'POST' }),
 }

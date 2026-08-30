@@ -9,9 +9,10 @@ import (
 )
 
 const (
-	serviceName       = "jira-workbench"
-	legacyServiceName = "ws-jira-cli-tool-v1"
-	accountName       = "current-user"
+	serviceName             = "jira-workbench"
+	legacyServiceName       = "ws-jira-cli-tool-v1"
+	accountName             = "current-user"
+	notificationAccountName = "notifications"
 )
 
 type Config struct {
@@ -26,6 +27,14 @@ func getConfigFilePath() string {
 		return ".jira-workbench.json"
 	}
 	return filepath.Join(home, ".jira-workbench.json")
+}
+
+func getNotificationConfigFilePath() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ".jira-workbench-notifications.json"
+	}
+	return filepath.Join(home, ".jira-workbench-notifications.json")
 }
 
 func SaveConfig(config Config) error {
@@ -77,4 +86,22 @@ func DeleteConfig() error {
 func HasConfig() bool {
 	cfg, err := LoadConfig()
 	return err == nil && cfg != nil && cfg.URL != ""
+}
+
+// SaveNotificationConfig stores notification credentials separately from Jira credentials.
+// Telegram tokens and webhook URLs may contain secrets, so they use the keyring when available
+// and a permission-restricted file as the server/container fallback.
+func SaveNotificationConfig(data []byte) error {
+	if err := keyring.Set(serviceName, notificationAccountName, string(data)); err == nil {
+		return nil
+	}
+	return os.WriteFile(getNotificationConfigFilePath(), data, 0600)
+}
+
+func LoadNotificationConfig() ([]byte, error) {
+	data, err := keyring.Get(serviceName, notificationAccountName)
+	if err == nil {
+		return []byte(data), nil
+	}
+	return os.ReadFile(getNotificationConfigFilePath())
 }

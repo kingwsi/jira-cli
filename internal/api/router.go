@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ws/jira-cli/internal/reminder"
 	"github.com/ws/jira-cli/internal/web"
 )
 
@@ -38,7 +39,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 }
 
 // NewRouter 创建并注册所有 API 路由以及静态资源托管
-func NewRouter() http.Handler {
+func NewRouter(reminderService *reminder.Service) http.Handler {
 	mux := http.NewServeMux()
 	// Two fixed metadata entries plus at most 128 user-search query entries.
 	metadataCache := newMemoryCache(130)
@@ -47,6 +48,7 @@ func NewRouter() http.Handler {
 	issueH := NewIssueHandler()
 	planH := NewPlanningHandler(metadataCache)
 	workH := NewWorklogHandler()
+	reminderH := NewReminderHandler(reminderService)
 
 	// 1. 系统与配置
 	mux.HandleFunc("GET /api/v1/config", cfgH.GetConfig)
@@ -80,7 +82,14 @@ func NewRouter() http.Handler {
 	mux.HandleFunc("GET /api/v1/worklogs/matrix", workH.GetWorklogMatrix)
 	mux.HandleFunc("POST /api/v1/worklogs", workH.AddWorklog)
 
-	// 6. SPA 静态文件托管
+	// 6. 个人提醒与消息推送
+	mux.HandleFunc("GET /api/v1/reminders/config", reminderH.GetConfig)
+	mux.HandleFunc("PUT /api/v1/reminders/config", reminderH.SaveConfig)
+	mux.HandleFunc("POST /api/v1/reminders/preview", reminderH.Preview)
+	mux.HandleFunc("POST /api/v1/reminders/send-now", reminderH.SendNow)
+	mux.HandleFunc("POST /api/v1/reminders/test", reminderH.TestChannels)
+
+	// 7. SPA 静态文件托管
 	spa := web.NewSPAServer()
 	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/") {

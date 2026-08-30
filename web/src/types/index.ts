@@ -142,6 +142,39 @@ export interface ServerConfig {
   defaultProject: string
 }
 
+export interface ReminderChannel {
+  id: string
+  name: string
+  type: 'telegram' | 'webhook'
+  enabled: boolean
+  botToken?: string
+  chatId?: string
+  webhookUrl?: string
+  secretConfigured?: boolean
+}
+
+export interface ReminderConfig {
+  enabled: boolean
+  schedule: {
+    type: 'last_workday_of_week' | 'weekday'
+    weekday: number
+    time: string
+    timezone: string
+  }
+  channels: ReminderChannel[]
+  lastSent?: string
+}
+
+export interface ReminderPreview {
+  report: {
+    missingWorkdays: string[] | null
+    dueIssues: Array<{ key: string; summary: string; date: string }> | null
+    staleIssues: Array<{ key: string; summary: string; date: string }> | null
+  }
+  message: string
+  sent: boolean
+}
+
 export interface Project {
   key: string
   name: string

@@ -73,14 +73,12 @@ export const Header: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            padding: '4px 8px',
-            backgroundColor: 'rgba(255, 255, 255, 0.12)',
-            borderRadius: 'var(--radius-sm)',
             fontSize: '12px',
-            color: '#ffffff',
+            color: '#deebff',
+            userSelect: 'none',
           }}
         >
-          <User size={13} />
+          <User size={14} style={{ opacity: 0.8 }} />
           <span>{currentUser?.displayName || currentUser?.name || '已连接'}</span>
         </div>
 
@@ -91,8 +89,7 @@ export const Header: React.FC = () => {
           aria-label="系统设置"
           title="系统设置"
         >
-          <Settings size={16} />
-          <span>系统设置</span>
+          <Settings size={17} />
         </NavLink>
       </div>
     </header>

@@ -104,28 +104,29 @@ type Issue struct {
 }
 
 type RawIssueFields struct {
-	Summary              string         `json:"summary"`
-	Description          string         `json:"description,omitempty"`
-	Status               Status         `json:"status"`
-	IssueType            IssueType      `json:"issuetype"`
-	Priority             Priority       `json:"priority"`
-	Assignee             *User          `json:"assignee"`
-	Reporter             *User          `json:"reporter"`
-	Created              string         `json:"created"`
-	Updated              string         `json:"updated"`
-	Labels               []string       `json:"labels,omitempty"`
-	Project              ProjectShort   `json:"project"`
+	Summary                       string         `json:"summary"`
+	Description                   string         `json:"description,omitempty"`
+	Status                        Status         `json:"status"`
+	IssueType                     IssueType      `json:"issuetype"`
+	Priority                      Priority       `json:"priority"`
+	Assignee                      *User          `json:"assignee"`
+	Reporter                      *User          `json:"reporter"`
+	Created                       string         `json:"created"`
+	Updated                       string         `json:"updated"`
+	DueDate                       string         `json:"duedate,omitempty"`
+	Labels                        []string       `json:"labels,omitempty"`
+	Project                       ProjectShort   `json:"project"`
 	TimeOriginalEstimate          int64          `json:"timeoriginalestimate,omitempty"`
 	AggregateTimeOriginalEstimate int64          `json:"aggregatetimeoriginalestimate,omitempty"`
 	TimeEstimate                  int64          `json:"timeestimate,omitempty"`
 	TimeSpent                     int64          `json:"timespent,omitempty"`
 	AggregateTimeSpent            int64          `json:"aggregatetimespent,omitempty"`
 	ExpectedStart                 string         `json:"customfield_10300,omitempty"`
-	ExpectedEnd          string         `json:"customfield_10301,omitempty"`
-	Parent               *ParentRef     `json:"parent,omitempty"`
-	Subtasks             []SubtaskRef   `json:"subtasks,omitempty"`
-	FixVersions          []Version      `json:"fixVersions,omitempty"`
-	ExtraFields          map[string]any `json:"-"`
+	ExpectedEnd                   string         `json:"customfield_10301,omitempty"`
+	Parent                        *ParentRef     `json:"parent,omitempty"`
+	Subtasks                      []SubtaskRef   `json:"subtasks,omitempty"`
+	FixVersions                   []Version      `json:"fixVersions,omitempty"`
+	ExtraFields                   map[string]any `json:"-"`
 }
 
 func (f *RawIssueFields) UnmarshalJSON(data []byte) error {
@@ -290,7 +291,7 @@ type CommentsResponse struct {
 func (c *Client) Search(jql string, maxResults int) (*SearchResponse, error) {
 	fields := []string{
 		"summary", "description", "status", "issuetype", "priority",
-		"assignee", "reporter", "created", "updated", "project",
+		"assignee", "reporter", "created", "updated", "duedate", "project",
 		"timeoriginalestimate", "aggregatetimeoriginalestimate", "timeestimate", "timespent", "aggregatetimespent",
 		"customfield_10300", "customfield_10301",
 		"parent", "subtasks", "fixVersions",

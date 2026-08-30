@@ -79,25 +79,26 @@
 }
 
 [data-ui="top-nav-settings"] {
-  min-height: 32px;
+  width: 32px;
+  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 5px 9px;
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
   color: #deebff;
   text-decoration: none;
-  font-size: 12px;
-  font-weight: 500;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-[data-ui="top-nav-settings"]:hover,
+[data-ui="top-nav-settings"]:hover {
+  background-color: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
 [data-ui="top-nav-settings"].active {
-  background-color: transparent;
+  background-color: rgba(255, 255, 255, 0.24);
   color: #ffffff;
 }
 

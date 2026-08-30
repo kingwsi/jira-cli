@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/ws/jira-cli/internal/api"
+	"github.com/ws/jira-cli/internal/reminder"
+	"github.com/ws/jira-cli/internal/services"
 )
 
 type Config struct {
@@ -110,7 +112,13 @@ func Run(cfg Config) error {
 		}()
 	}
 
-	router := api.NewRouter()
+	serviceCtx, cancelService := context.WithCancel(context.Background())
+	defer cancelService()
+	holidayUpdater := services.NewHolidayUpdater()
+	holidayUpdater.Start(serviceCtx)
+	reminderService := reminder.NewService()
+	reminderService.Start(serviceCtx)
+	router := api.NewRouter(reminderService)
 	httpServer := &http.Server{
 		Addr:         addr,
 		Handler:      router,

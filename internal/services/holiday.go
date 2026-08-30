@@ -1,6 +1,19 @@
 package services
 
-import "time"
+import (
+	"sync"
+	"time"
+)
+
+type holidayOverride struct {
+	Name     string
+	IsOffDay bool
+}
+
+var (
+	holidayOverridesMu sync.RWMutex
+	holidayOverrides   = make(map[int]map[string]holidayOverride)
+)
 
 // 中国大陆法定节假日与调休补班字典 (2024 - 2026)
 var statutoryHolidays = map[string]string{
@@ -58,16 +71,34 @@ var transferWorkdays = map[string]string{
 func IsChinaWorkday(t time.Time) bool {
 	dateStr := t.Format("2006-01-02")
 
-	// 1. 周末调休补班 -> 属于工作日
+	// 1. 自动更新的 holiday-cn 数据优先于内置数据。
+	holidayOverridesMu.RLock()
+	override, ok := holidayOverrides[t.Year()][dateStr]
+	holidayOverridesMu.RUnlock()
+	if ok {
+		return !override.IsOffDay
+	}
+
+	// 2. 内置周末调休补班 -> 属于工作日
 	if _, ok := transferWorkdays[dateStr]; ok {
 		return true
 	}
 
-	// 2. 法定假日放假 -> 不属于工作日
+	// 3. 内置法定假日放假 -> 不属于工作日
 	if _, ok := statutoryHolidays[dateStr]; ok {
 		return false
 	}
 
-	// 3. 常规工作日 (非周六日)
+	// 4. 常规工作日 (非周六日)
 	return t.Weekday() != time.Saturday && t.Weekday() != time.Sunday
+}
+
+func applyHolidayCalendar(calendar holidayCalendar) {
+	overrides := make(map[string]holidayOverride, len(calendar.Days))
+	for _, day := range calendar.Days {
+		overrides[day.Date] = holidayOverride{Name: day.Name, IsOffDay: day.IsOffDay}
+	}
+	holidayOverridesMu.Lock()
+	holidayOverrides[calendar.Year] = overrides
+	holidayOverridesMu.Unlock()
 }
