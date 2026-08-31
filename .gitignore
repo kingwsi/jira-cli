@@ -13,6 +13,8 @@
 # Test and coverage artifacts
 *.test
 *.out
+__pycache__/
+*.py[cod]
 
 # Go workspace
 go.work
