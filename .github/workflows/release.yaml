@@ -68,15 +68,7 @@ jobs:
 
           # Windows (amd64)
           CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -X main.Version=${VERSION}" -o dist/jira.exe main.go
-          
-          # 打包 Windows zip（兼容容器内缺少 zip 工具的环境）
-          if command -v zip >/dev/null 2>&1; then
-            zip -j dist/latest/jira-windows-amd64.zip dist/jira.exe
-          elif command -v python3 >/dev/null 2>&1; then
-            python3 -c "import zipfile; z = zipfile.ZipFile('dist/latest/jira-windows-amd64.zip', 'w', zipfile.ZIP_DEFLATED); z.write('dist/jira.exe', 'jira.exe'); z.close()"
-          else
-            tar -czvf dist/latest/jira-windows-amd64.tar.gz -C dist jira.exe
-          fi
+          tar -czvf dist/latest/jira-windows-amd64.tar.gz -C dist jira.exe
           rm dist/jira.exe
 
           # 3. 生成版本元数据 version.json
@@ -154,7 +146,7 @@ jobs:
           MESSAGE="${MESSAGE}📦 <b>各平台下载包:</b>%0A"
           MESSAGE="${MESSAGE} • macOS (Apple Silicon): <a href=\"${BASE}/latest/jira-darwin-arm64.tar.gz\">下载</a>%0A"
           MESSAGE="${MESSAGE} • macOS (Intel): <a href=\"${BASE}/latest/jira-darwin-amd64.tar.gz\">下载</a>%0A"
-          MESSAGE="${MESSAGE} • Windows (x64): <a href=\"${BASE}/latest/jira-windows-amd64.zip\">下载</a>%0A"
+          MESSAGE="${MESSAGE} • Windows (x64): <a href=\"${BASE}/latest/jira-windows-amd64.tar.gz\">下载</a>%0A"
           MESSAGE="${MESSAGE} • Linux (x64): <a href=\"${BASE}/latest/jira-linux-amd64.tar.gz\">下载</a>%0A%0A"
           MESSAGE="${MESSAGE}⚡ <b>一键安装命令:</b>%0A<code>curl -fsSL ${BASE}/install.sh | bash</code>%0A%0A"
           MESSAGE="${MESSAGE}🌐 <b>下载落地页:</b> ${BASE}/"
