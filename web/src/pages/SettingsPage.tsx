@@ -22,7 +22,9 @@ import {
 import { api } from '../api/client'
 import { ReminderConfig, ReminderPreview, ServerConfig } from '../types'
 
-type SettingsTab = 'jira' | 'reminders' | 'fields'
+import { UpdateSettings } from '../components/UpdateSettings'
+
+type SettingsTab = 'jira' | 'reminders' | 'fields' | 'updates'
 
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('jira')
@@ -244,10 +246,14 @@ export const SettingsPage: React.FC = () => {
                 {fields.length > 0 ? `${fields.length} 项` : '未同步'}
               </span>
             </button>
+            <button type="button" className={`settings-nav-item ${activeTab === 'updates' ? 'active' : ''}`} onClick={() => setActiveTab('updates')}>
+              <div className="settings-nav-label"><RefreshCw size={15} /><span>版本与更新</span></div>
+            </button>
           </nav>
 
           {/* Right Content Area */}
           <div className="settings-content-panel">
+            {activeTab === 'updates' && <UpdateSettings />}
             {/* Tab 1: Jira Connection */}
             {activeTab === 'jira' && (
               <div className="settings-section-card">

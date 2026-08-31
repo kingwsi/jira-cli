@@ -23,6 +23,8 @@ RUN apk add --no-cache ca-certificates \
 
 COPY --from=go-builder /out/jira /usr/local/bin/jira
 
+ENV JIRA_CONTAINER=1
+
 USER jira
 WORKDIR /data
 EXPOSE 8080

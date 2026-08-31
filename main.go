@@ -4,12 +4,13 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/ws/jira-cli/internal/server"
 )
 
 var (
-	Version = "1.0.0"
+	Version = "dev"
 )
 
 func main() {
@@ -39,7 +40,7 @@ func main() {
 	flag.Parse()
 
 	if showVersion {
-		fmt.Printf("Jira Workbench v%s\n", Version)
+		fmt.Printf("Jira Workbench v%s\n", strings.TrimPrefix(Version, "v"))
 		return
 	}
 

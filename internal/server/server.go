@@ -15,6 +15,7 @@ import (
 	"github.com/ws/jira-cli/internal/api"
 	"github.com/ws/jira-cli/internal/reminder"
 	"github.com/ws/jira-cli/internal/services"
+	"github.com/ws/jira-cli/internal/updater"
 )
 
 type Config struct {
@@ -118,7 +119,10 @@ func Run(cfg Config) error {
 	holidayUpdater.Start(serviceCtx)
 	reminderService := reminder.NewService()
 	reminderService.Start(serviceCtx)
-	router := api.NewRouter(reminderService)
+	restart := make(chan struct{}, 1)
+	updateService := updater.New(cfg.Version, func() { restart <- struct{}{} })
+	updateService.Start(serviceCtx)
+	router := api.NewRouter(reminderService, updateService)
 	httpServer := &http.Server{
 		Addr:         addr,
 		Handler:      router,
@@ -141,6 +145,14 @@ func Run(cfg Config) error {
 	select {
 	case err := <-serverErrChan:
 		return fmt.Errorf("HTTP 服务异常退出: %w", err)
+	case <-restart:
+		cancelService()
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+		if err := httpServer.Shutdown(ctx); err != nil {
+			_ = httpServer.Close()
+		}
+		return updater.Restart()
 	case sig := <-quit:
 		fmt.Printf("\n收到信号 [%s]，正在停止服务...\n", sig)
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

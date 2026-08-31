@@ -29,7 +29,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version-file: 'go.mod'
           cache: true
 
       # 1. 构建 Web 前端
@@ -45,7 +45,11 @@ jobs:
       - name: Build Multi-Platform Binaries
         run: |
           echo "==> 2. 跨平台编译 Go 单二进制程序..."
-          VERSION=${GITHUB_REF_NAME:-v1.0.0}
+          VERSION=${GITHUB_REF_NAME}
+          if ! [[ "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Only stable vMAJOR.MINOR.PATCH tags may be published"
+            exit 1
+          fi
           BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           DATE_DISPLAY=$(date +"%Y-%m-%d")
 
@@ -72,13 +76,21 @@ jobs:
           rm dist/jira.exe
 
           # 3. 生成版本元数据 version.json
-          cat <<EOF > dist/latest/version.json
-          {
-            "version": "${VERSION}",
-            "built_at": "${BUILD_TIME}",
-            "download_base": "${DOWNLOAD_BASE_URL}/latest"
-          }
-          EOF
+          export VERSION BUILD_TIME
+          python3 - <<'PYTHON'
+          import hashlib, json, os, pathlib, shutil
+          latest = pathlib.Path('dist/latest')
+          release = pathlib.Path('dist/releases') / os.environ['VERSION']
+          release.mkdir(parents=True)
+          checksums = {}
+          for archive in latest.glob('*.tar.gz'):
+              checksums[archive.name] = hashlib.sha256(archive.read_bytes()).hexdigest()
+              shutil.copy2(archive, release / archive.name)
+          metadata = dict(version=os.environ['VERSION'], built_at=os.environ['BUILD_TIME'],
+                          download_base=os.environ['DOWNLOAD_BASE_URL'] + '/releases/' + os.environ['VERSION'],
+                          checksums=checksums)
+          (latest / 'version.json').write_text(json.dumps(metadata, indent=2) + '\n')
+          PYTHON
 
           # 4. 生成一键安装脚本 install.sh
           cat << 'EOF' > dist/install.sh
@@ -107,34 +119,32 @@ jobs:
               -e "s/RELEASE_DATE_PLACEHOLDER/${DATE_DISPLAY}/g" \
               deploy/index.html > dist/index.html
 
-      # 3. 部署到服务器本地目录 /var/www/jira-work (若 Runner 在本机)
-      - name: Deploy to /var/www/jira-work
-        run: |
-          echo "==> 3. 部署发布产物到 Nginx 发布目录: ${DEPLOY_TARGET_DIR}"
-          if [ -d "${DEPLOY_TARGET_DIR}" ] || sudo mkdir -p "${DEPLOY_TARGET_DIR}" 2>/dev/null || mkdir -p "${DEPLOY_TARGET_DIR}" 2>/dev/null; then
-            sudo cp -rf dist/* "${DEPLOY_TARGET_DIR}/" 2>/dev/null || cp -rf dist/* "${DEPLOY_TARGET_DIR}/"
-            echo "✓ 成功同步所有构建包与页面到 ${DEPLOY_TARGET_DIR}"
-          else
-            echo "ℹ️ ${DEPLOY_TARGET_DIR} 目录不可直接写入，可能运行在隔离容器中。"
-          fi
-
-      # 4. 如果配置了 SSH 远程部署（支持 Runner 与 Nginx 不在同一容器场景）
-      - name: Deploy via SSH (Optional)
-        if: ${{ secrets.SSH_HOST != '' && secrets.SSH_KEY != '' }}
-        uses: easingthemes/ssh-deploy@main
+      # Job containers do not share the Nginx host filesystem. SSH is mandatory.
+      - name: Publish to Nginx host via SSH
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY }}
-          ARGS: "-rltgoDzvO --delete"
-          SOURCE: "dist/"
-          REMOTE_HOST: ${{ secrets.SSH_HOST }}
-          REMOTE_USER: ${{ secrets.SSH_USER || 'root' }}
-          TARGET: "/var/www/jira-work"
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: bash deploy/publish.sh
 
       # 5. Telegram 成功通知
       - name: Send Telegram Notification on Success
-        if: ${{ success() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != '' }}
+        if: ${{ success() }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          VERSION=${GITHUB_REF_NAME:-v1.0.0}
+          if [[ -z "$TELEGRAM_BOT_TOKEN" || -z "$TELEGRAM_CHAT_ID" ]]; then
+            echo "Telegram notification not configured; skipping."
+            exit 0
+          fi
+          VERSION=${GITHUB_REF_NAME}
+          if ! [[ "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Only stable vMAJOR.MINOR.PATCH tags may be published"
+            exit 1
+          fi
           COMMIT_MSG=$(git log -1 --pretty=format:'%s')
           AUTHOR=$(git log -1 --pretty=format:'%an')
           BASE="${DOWNLOAD_BASE_URL}"
@@ -151,25 +161,32 @@ jobs:
           MESSAGE="${MESSAGE}⚡ <b>一键安装命令:</b>%0A<code>curl -fsSL ${BASE}/install.sh | bash</code>%0A%0A"
           MESSAGE="${MESSAGE}🌐 <b>下载落地页:</b> ${BASE}/"
 
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_CHAT_ID}" \
             -d "parse_mode=HTML" \
             -d "disable_web_page_preview=true" \
             -d "text=${MESSAGE}"
 
       # 6. Telegram 失败告警
       - name: Send Telegram Notification on Failure
-        if: ${{ failure() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != '' }}
+        if: ${{ failure() }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
+          if [[ -z "$TELEGRAM_BOT_TOKEN" || -z "$TELEGRAM_CHAT_ID" ]]; then
+            echo "Telegram notification not configured; skipping."
+            exit 0
+          fi
           VERSION=${GITHUB_REF_NAME:-latest}
           COMMIT_MSG=$(git log -1 --pretty=format:'%s')
 
-          MESSAGE="❌ <b>Jira Workbench 构建失败！</b>%0A%0A"
+          MESSAGE="❌ <b>Jira Workbench 构建或发布失败！</b>%0A%0A"
           MESSAGE="${MESSAGE}🏷 <b>分支/标签:</b> <code>${VERSION}</code>%0A"
           MESSAGE="${MESSAGE}📝 <b>提交信息:</b> ${COMMIT_MSG}%0A"
           MESSAGE="${MESSAGE}⚠️ 请登录 Gitea Actions 控制台查看详细构建日志。"
 
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_CHAT_ID}" \
             -d "parse_mode=HTML" \
             -d "text=${MESSAGE}"

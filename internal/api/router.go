@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/ws/jira-cli/internal/reminder"
+	"github.com/ws/jira-cli/internal/updater"
 	"github.com/ws/jira-cli/internal/web"
 )
 
@@ -39,7 +40,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 }
 
 // NewRouter 创建并注册所有 API 路由以及静态资源托管
-func NewRouter(reminderService *reminder.Service) http.Handler {
+func NewRouter(reminderService *reminder.Service, updates ...*updater.Service) http.Handler {
 	mux := http.NewServeMux()
 	// Two fixed metadata entries plus at most 128 user-search query entries.
 	metadataCache := newMemoryCache(130)
@@ -49,6 +50,10 @@ func NewRouter(reminderService *reminder.Service) http.Handler {
 	planH := NewPlanningHandler(metadataCache)
 	workH := NewWorklogHandler()
 	reminderH := NewReminderHandler(reminderService)
+
+	if len(updates) > 0 {
+		registerUpdates(mux, updates[0])
+	}
 
 	// 1. 系统与配置
 	mux.HandleFunc("GET /api/v1/config", cfgH.GetConfig)
