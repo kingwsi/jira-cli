@@ -180,10 +180,23 @@ export const TasksPage: React.FC = () => {
     return currentMonth === thisMonth
   }, [currentMonth])
 
+  // 计算本周涉及的所有月份（跨月周如 8/31 ~ 9/6 将拼接 "2026-08,2026-09"）
+  const weekMonths = useMemo(() => {
+    const startMonth = weekStart.slice(0, 7)
+    const endMonth = weekEnd.slice(0, 7)
+    if (startMonth === endMonth) {
+      return startMonth
+    }
+    return `${startMonth},${endMonth}`
+  }, [weekStart, weekEnd])
+
+  // 待办模式下查询本周跨越的所有月份，全部模式下查询用户选中的单个月份
+  const queryMonth = activeTab === 'todo' ? weekMonths : currentMonth
+
   const loadIssues = () => {
     setLoading(true)
     api.getIssues({
-      month: currentMonth || undefined,
+      month: queryMonth || undefined,
       status: statusFilter || undefined,
       assignee: assigneeFilter || undefined,
     })
@@ -200,7 +213,7 @@ export const TasksPage: React.FC = () => {
 
   useEffect(() => {
     loadIssues()
-  }, [currentMonth, statusFilter, assigneeFilter])
+  }, [queryMonth, statusFilter, assigneeFilter])
 
   // 1. 本周任务（展示全部状态，包含待办、进行中、已完成/已实现）：排期与本周有交集，或未设置日期的任务
   const weekIssues = useMemo(() => {

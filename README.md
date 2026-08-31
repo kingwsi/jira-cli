@@ -13,6 +13,7 @@
 - 🐞 **任务与缺陷快捷管理**：按状态多维度筛选、快速流转工作流、详情抽屉编辑与快速新建。
 - 🔐 **安全凭据管理**：Jira 访问凭据优先保存在系统钥匙串（macOS Keychain / Windows Credential / Linux SecretService），支持无界面服务器降级配置。
 - 📦 **单二进制零依赖分发**：前端静态资源通过 Go `embed` 内嵌，单个二进制即可在局域网内提供完整 Web 服务。
+- 🤖 **AI Agent 运行指南**：完整的多环境运行、状态自检与运维规范详见 [RUNBOOK.md](file:///Users/ws/Documents/projects/jira-cli/RUNBOOK.md)。
 
 ---
 

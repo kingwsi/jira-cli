@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Bug, RotateCcw, Search, User, ExternalLink, AlertTriangle, CheckCircle2, Clock } from 'lucide-react'
+import { Bug, RotateCcw, Search, User, ExternalLink, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { api } from '../api/client'
 import { IssueItem } from '../types'
 import { TaskDrawer } from '../components/TaskDrawer'
@@ -73,10 +73,6 @@ export const BugsPage: React.FC<BugsPageProps> = ({ embedded = false, onUnresolv
     )
   })
 
-  // 统计指标
-  const unresolvedCount = bugs.filter((b) => b.statusCategory !== 'Done').length
-  const resolvedCount = bugs.filter((b) => b.statusCategory === 'Done').length
-
   const openJira = (key: string, e: React.MouseEvent) => {
     e.stopPropagation()
     if (!jiraUrl) return
@@ -100,44 +96,6 @@ export const BugsPage: React.FC<BugsPageProps> = ({ embedded = false, onUnresolv
           <div data-ui="page-heading" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '16px' }}>
             <Bug size={20} color="var(--color-danger)" />
             <span>缺陷与问题中心</span>
-          </div>
-
-          {/* 统计胶囊 */}
-          <div data-ui="toolbar-chips" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
-            <span
-              data-ui="toolbar-chip"
-              style={{
-                backgroundColor: 'var(--bg-danger-subtle)',
-                color: 'var(--color-danger)',
-                border: '1px solid var(--border-danger)',
-                padding: '2px 8px',
-                borderRadius: '12px',
-                fontWeight: 600,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-              }}
-            >
-              <Clock size={12} />
-              待解决: {unresolvedCount}
-            </span>
-            <span
-              data-ui="toolbar-chip"
-              style={{
-                backgroundColor: 'var(--bg-success-subtle)',
-                color: 'var(--color-success)',
-                border: '1px solid var(--border-success)',
-                padding: '2px 8px',
-                borderRadius: '12px',
-                fontWeight: 600,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-              }}
-            >
-              <CheckCircle2 size={12} />
-              已解决: {resolvedCount}
-            </span>
           </div>
 
           {/* 人员筛选 */}
@@ -336,8 +294,7 @@ export const BugsPage: React.FC<BugsPageProps> = ({ embedded = false, onUnresolv
                           color: '#fff',
                         }}
                       >
-                        <CheckCircle2 size={13} />
-                        <span>已解决</span>
+                        处理
                       </button>
                     ) : (
                       <button

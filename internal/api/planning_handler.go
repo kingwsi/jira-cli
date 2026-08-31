@@ -50,10 +50,24 @@ func (h *PlanningHandler) GetPlanningTree(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	// 按照团队规范：标题必须包含对应月份编码（例如 "202608"）
-	if month != "" {
-		monthCode := strings.ReplaceAll(month, "-", "")
-		conditions = append(conditions, fmt.Sprintf("summary ~ '%s'", monthCode))
+	// 按照团队规范：标题必须包含对应月份编码（例如 "202608"，或跨月逗号分隔 "2026-08,2026-09"）
+	if month != "" && month != "all" {
+		monthList := strings.Split(month, ",")
+		var monthConditions []string
+		for _, m := range monthList {
+			mTrim := strings.TrimSpace(m)
+			if mTrim != "" && mTrim != "all" {
+				monthCode := strings.ReplaceAll(mTrim, "-", "")
+				if monthCode != "" {
+					monthConditions = append(monthConditions, fmt.Sprintf("summary ~ '%s'", monthCode))
+				}
+			}
+		}
+		if len(monthConditions) == 1 {
+			conditions = append(conditions, monthConditions[0])
+		} else if len(monthConditions) > 1 {
+			conditions = append(conditions, fmt.Sprintf("(%s)", strings.Join(monthConditions, " OR ")))
+		}
 	}
 
 	// 动态检测 Jira 实例中真实存在的 Task / Subtask 类型名称，避免硬编码未知英文类型导致 JQL 400
@@ -126,10 +140,24 @@ func (h *PlanningHandler) GetTeamSwimlanes(w http.ResponseWriter, r *http.Reques
 			conditions = append(conditions, fmt.Sprintf("assignee = '%s'", assignee))
 		}
 	}
-	// 按照团队规范：标题必须包含对应月份编码（例如 "202608"）
-	if month != "" {
-		monthCode := strings.ReplaceAll(month, "-", "")
-		conditions = append(conditions, fmt.Sprintf("summary ~ '%s'", monthCode))
+	// 按照团队规范：标题必须包含对应月份编码（例如 "202608"，或跨月逗号分隔 "2026-08,2026-09"）
+	if month != "" && month != "all" {
+		monthList := strings.Split(month, ",")
+		var monthConditions []string
+		for _, m := range monthList {
+			mTrim := strings.TrimSpace(m)
+			if mTrim != "" && mTrim != "all" {
+				monthCode := strings.ReplaceAll(mTrim, "-", "")
+				if monthCode != "" {
+					monthConditions = append(monthConditions, fmt.Sprintf("summary ~ '%s'", monthCode))
+				}
+			}
+		}
+		if len(monthConditions) == 1 {
+			conditions = append(conditions, monthConditions[0])
+		} else if len(monthConditions) > 1 {
+			conditions = append(conditions, fmt.Sprintf("(%s)", strings.Join(monthConditions, " OR ")))
+		}
 	}
 
 	jql := strings.Join(conditions, " AND ")

@@ -117,10 +117,24 @@ func (h *IssueHandler) ListIssues(w http.ResponseWriter, r *http.Request) {
 		if project != "" {
 			conditions = append(conditions, fmt.Sprintf("project = '%s'", project))
 		}
-		// 按照团队规范：标题必须包含对应月份编码（例如 "202608"）
+		// 按照团队规范：标题必须包含对应月份编码（例如 "202608"，或跨月逗号分隔 "2026-08,2026-09"）
 		if month != "" && month != "all" {
-			monthCode := strings.ReplaceAll(month, "-", "")
-			conditions = append(conditions, fmt.Sprintf("summary ~ '%s'", monthCode))
+			monthList := strings.Split(month, ",")
+			var monthConditions []string
+			for _, m := range monthList {
+				mTrim := strings.TrimSpace(m)
+				if mTrim != "" && mTrim != "all" {
+					monthCode := strings.ReplaceAll(mTrim, "-", "")
+					if monthCode != "" {
+						monthConditions = append(monthConditions, fmt.Sprintf("summary ~ '%s'", monthCode))
+					}
+				}
+			}
+			if len(monthConditions) == 1 {
+				conditions = append(conditions, monthConditions[0])
+			} else if len(monthConditions) > 1 {
+				conditions = append(conditions, fmt.Sprintf("(%s)", strings.Join(monthConditions, " OR ")))
+			}
 		}
 		if summary != "" {
 			conditions = append(conditions, fmt.Sprintf("summary ~ '%s'", summary))
