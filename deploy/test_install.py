@@ -29,9 +29,7 @@ class InstallTest(unittest.TestCase):
             commands = {
                 'uname': 'if [ "$1" = "-s" ]; then printf "%s\\n" "$MOCK_OS"; else echo x86_64; fi',
                 'curl': 'printf "%s\\n" "$2" > "$TRACE_URL"; cp "$FIXTURE_PACKAGE" "$4"',
-                'id': 'echo 1000',
-                # Never invoke sudo or write into the real /usr/local/bin.
-                'sudo': 'printf "%s\\n" "$*" >> "$TRACE_INSTALL"',
+                'sudo': 'echo "Unexpected sudo invocation" >&2; exit 1',
             }
             for name, body in commands.items():
                 command = mock / name
@@ -39,11 +37,15 @@ class InstallTest(unittest.TestCase):
                 command.chmod(0o755)
             env = dict(os.environ, PATH=str(mock) + os.pathsep + os.environ['PATH'],
                        MOCK_OS=system, TRACE_URL=str(root / 'url'),
-                       FIXTURE_PACKAGE=str(package), TRACE_INSTALL=str(root / 'installed'))
+                       FIXTURE_PACKAGE=str(package), HOME=str(root / 'user home'))
             subprocess.run(['bash', '-n', str(path)], check=True)
             result = subprocess.run(['bash', str(path)], env=env, capture_output=True, text=True)
             url = (root / 'url').read_text().strip() if (root / 'url').exists() else ''
-            installed = (root / 'installed').exists()
+            destination = root / 'user home' / '.local' / 'bin' / 'jira'
+            installed = destination.is_file()
+            if installed:
+                self.assertEqual(destination.read_bytes(), b'binary')
+                self.assertTrue(os.access(destination, os.X_OK))
             return result, url, installed
 
     def test_versioned_download_and_install(self):
@@ -51,6 +53,7 @@ class InstallTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(url, 'https://nextx.uk/jira-work/releases/v1.0.2/jira-linux-amd64.tar.gz')
         self.assertTrue(installed)
+        self.assertIn('export PATH="$HOME/.local/bin:$PATH"', result.stdout)
 
     def test_checksum_failure_never_installs(self):
         result, _, installed = self.run_install(valid=False)

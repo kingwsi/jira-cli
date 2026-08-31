@@ -143,4 +143,6 @@ GitHub 的托管 Runner 不使用这台服务器的目录映射，因此 `.githu
 
 一键安装命令 `curl -fsSL https://nextx.uk/jira-work/install.sh | bash` 仅面向已提供安装包的 macOS arm64/amd64 和 Linux amd64。脚本会下载其内嵌版本对应的 `/releases/vX.Y.Z/` 包并校验 SHA-256；Windows 请手动下载 Windows 包，解压后运行 `jira.exe`，或在 PowerShell 中运行 `.\jira.exe -open`。Git Bash 不会被当作 Linux 安装，WSL 安装的是 Linux 程序。
 
+安装脚本使用普通用户运行即可，不需要 sudo，程序安装到 `~/.local/bin/jira`。如果该目录不在 PATH 中，请将 `export PATH="$HOME/.local/bin:$PATH"` 加入 `~/.zshrc` 或 `~/.bashrc`，并在当前终端执行；也可以直接运行 `~/.local/bin/jira -open`。脚本不会自动修改 shell 配置或删除原来安装在 `/usr/local/bin` 的版本。
+
 使用 Cloudflare 缓存时，请对 `/jira-work/install.sh`、`/jira-work/latest/version.json` 和落地页绕过缓存或设置合适的短缓存，并清除已有缓存；`/jira-work/releases/*` 可长期缓存。固定入口脚本如果仍被缓存，仍可能安装其内嵌的旧版本。

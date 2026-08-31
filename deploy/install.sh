@@ -32,11 +32,15 @@ fi
 [[ "${actual%% *}" == "$expected" ]] || { echo '下载包校验失败，未安装。' >&2; exit 1; }
 tar -xzf "$work/package.tar.gz" -C "$work" jira
 [[ -f "$work/jira" && ! -L "$work/jira" ]] || { echo '发布包缺少有效的 jira 程序' >&2; exit 1; }
-if [[ $(id -u) == 0 ]]; then
-  mkdir -p /usr/local/bin
-  install -m 0755 "$work/jira" /usr/local/bin/jira
-else
-  sudo mkdir -p /usr/local/bin
-  sudo install -m 0755 "$work/jira" /usr/local/bin/jira
-fi
-printf "安装成功：%s。输入 'jira -open' 启动工作台。\n" "$VERSION"
+install_dir="${HOME:?未设置 HOME，无法确定用户安装目录}/.local/bin"
+mkdir -p "$install_dir"
+install -m 0755 "$work/jira" "$install_dir/jira"
+printf '安装成功：%s，位置：%s/jira。\n' "$VERSION" "$install_dir"
+case ":${PATH:-}:" in
+  *":$install_dir:"*) ;;
+  *)
+    printf '请将以下配置加入 shell 配置文件（如 ~/.zshrc 或 ~/.bashrc），并在当前终端执行：\n'
+    printf 'export PATH="$HOME/.local/bin:$PATH"\n'
+    ;;
+esac
+printf '启动工作台："%s/jira" -open\n' "$install_dir"
