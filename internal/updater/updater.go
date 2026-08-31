@@ -27,11 +27,13 @@ const source = "https://nextx.uk/jira-work/latest/version.json"
 
 type Release struct {
 	Version   string            `json:"version"`
+	Summary   string            `json:"summary"`
 	BuiltAt   string            `json:"built_at"`
 	Checksums map[string]string `json:"checksums"`
 }
 type Status struct {
 	Current   string `json:"current"`
+	Summary   string `json:"summary"`
 	Latest    string `json:"latest"`
 	Available bool   `json:"available"`
 	Auto      bool   `json:"auto"`
@@ -164,6 +166,7 @@ func (s *Service) check(ctx context.Context) (Release, error) {
 		return release, err
 	}
 	s.status.Latest = release.Version
+	s.status.Summary = releaseSummary(release.Summary)
 	s.status.Available = newer(release.Version, s.status.Current)
 	return release, nil
 }
@@ -177,8 +180,10 @@ func (s *Service) Check(ctx context.Context) error {
 // CheckAndNotify bounds metadata checks without reducing the download timeout.
 func (s *Service) CheckAndNotify(ctx context.Context, out io.Writer) {
 	if !valid(s.Status().Current) {
+		fmt.Fprintf(out, "当前版本 %s 为开发版本，跳过自动检查更新。\n", s.Status().Current)
 		return
 	}
+	fmt.Fprintf(out, "正在检查更新（当前 %s）…\n", s.Status().Current)
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	if err := s.Check(ctx); err != nil {
@@ -188,7 +193,28 @@ func (s *Service) CheckAndNotify(ctx context.Context, out io.Writer) {
 	st := s.Status()
 	if st.Available {
 		fmt.Fprintf(out, "发现新版本 %s（当前 %s），请前往工作台设置 → 版本与更新，或访问 https://nextx.uk/jira-work/ 更新。\n", st.Latest, st.Current)
+		fmt.Fprintf(out, "更新内容：%s\n", st.Summary)
+	} else {
+		fmt.Fprintf(out, "检查更新完成：当前 %s，最新稳定版本 %s，暂无可用更新。\n", st.Current, st.Latest)
 	}
+}
+
+func releaseSummary(value string) string {
+	// Keep publisher text on one console line and bound the notice in both clients.
+	value = strings.Map(func(r rune) rune {
+		if r < 32 || r == 127 {
+			return ' '
+		}
+		return r
+	}, value)
+	value = strings.Join(strings.Fields(value), " ")
+	if value == "" {
+		return "此版本暂未提供更新说明，请查看下载页。"
+	}
+	if chars := []rune(value); len(chars) > 160 {
+		return string(chars[:159]) + "…"
+	}
+	return value
 }
 
 func (s *Service) Start(ctx context.Context) {

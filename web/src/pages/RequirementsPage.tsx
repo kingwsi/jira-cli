@@ -3,17 +3,16 @@ import {
   FileText,
   RotateCcw,
   Search,
-  ExternalLink,
   AlertTriangle,
   Sparkles,
   MessageSquare,
-  CheckCircle2,
   Building2,
   Tag,
   User,
   ArrowUpRight,
   TrendingUp,
   TrendingDown,
+  ExternalLink,
 } from 'lucide-react'
 import { api } from '../api/client'
 import { IssueItem } from '../types'
@@ -21,6 +20,8 @@ import { TaskDrawer } from '../components/TaskDrawer'
 import { WeeklyProgressModal } from '../components/WeeklyProgressModal'
 import { QuickResolveModal } from '../components/QuickResolveModal'
 import { TableSkeleton, TaskOrdersCardSkeleton } from '../components/Skeleton'
+import { CopyKeyButton } from '../components/CopyKeyButton'
+import { OverflowTooltip } from '../components/OverflowTooltip'
 
 export interface RequirementsPageProps {
   embedded?: boolean
@@ -384,10 +385,9 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
-                        {/* Key：无背景无边框，仅保留跳转与 icon */}
                         <span
                           onClick={(e) => openJira(item.key, e)}
-                          title="在 Jira 中打开"
+                          title={`在 Jira 中打开 ${item.key}`}
                           style={{
                             fontWeight: 700,
                             fontSize: '12.5px',
@@ -398,11 +398,27 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
                             alignItems: 'center',
                             gap: '3px',
                             flexShrink: 0,
+                            textDecoration: 'underline',
+                            textDecorationColor: 'transparent',
+                            transition: 'text-decoration-color 0.15s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.textDecorationColor = '#0052CC'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.textDecorationColor = 'transparent'
                           }}
                         >
-                          {item.key}
-                          <ExternalLink size={11} />
+                          <span>{item.key}</span>
+                          <ExternalLink size={10} style={{ opacity: 0.6 }} />
                         </span>
+
+                        <CopyKeyButton
+                          issueKey={item.key}
+                          summary={item.summary}
+                          assigneeName={item.assignee?.displayName || item.assignee?.name}
+                          jiraUrl={jiraUrl}
+                        />
 
                         {/* 标题 */}
                         <span
@@ -838,7 +854,7 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
           <table data-ui="table">
             <thead>
               <tr>
-                <th style={{ width: '110px' }}>Key</th>
+                <th style={{ width: '125px' }}>Key</th>
                 <th style={{ width: '80px' }}>类型</th>
                 <th>概要</th>
                 <th style={{ width: '100px' }}>状态</th>
@@ -846,7 +862,7 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
                 <th style={{ width: '110px' }}>经办人</th>
                 <th style={{ width: '110px' }}>报告人</th>
                 <th style={{ width: '130px' }}>更新时间</th>
-                <th style={{ width: '110px', textAlign: 'center' }}>操作</th>
+                <th style={{ width: '150px', textAlign: 'center' }}>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -872,10 +888,11 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
                           cursor: 'pointer',
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '4px',
+                          gap: '3px',
                           textDecoration: 'underline',
                           textDecorationColor: 'transparent',
                           transition: 'text-decoration-color 0.15s ease',
+                          whiteSpace: 'nowrap',
                         }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.textDecorationColor = isTaskOrder
@@ -886,8 +903,8 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
                           e.currentTarget.style.textDecorationColor = 'transparent'
                         }}
                       >
-                        {item.key}
-                        <ExternalLink size={11} style={{ opacity: 0.6 }} />
+                        <span>{item.key}</span>
+                        <ExternalLink size={10} style={{ opacity: 0.6 }} />
                       </span>
                     </td>
                     <td>
@@ -903,10 +920,14 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
                         {isTaskOrder ? '任务令' : item.issueType}
                       </span>
                     </td>
-                    <td>
-                      <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
-                        {item.summary}
-                      </div>
+                    <td style={{ maxWidth: '420px', minWidth: '220px' }}>
+                      <OverflowTooltip
+                        text={item.summary}
+                        style={{
+                          fontWeight: 500,
+                          color: 'var(--text-primary)',
+                        }}
+                      />
                     </td>
                     <td>
                       <span
@@ -948,6 +969,12 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                        <CopyKeyButton
+                          issueKey={item.key}
+                          summary={item.summary}
+                          assigneeName={item.assignee?.displayName || item.assignee?.name}
+                          jiraUrl={jiraUrl}
+                        />
                         {item.issueType === '协助' && item.status !== '验收中' && item.statusCategory !== 'Done' && (
                           <button
                             data-ui="button"
@@ -965,13 +992,11 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
                               fontSize: '11.5px',
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '4px',
                               backgroundColor: 'var(--color-success)',
                               borderColor: 'var(--color-success)',
                               color: '#fff',
                             }}
                           >
-                            <CheckCircle2 size={12} />
                             <span>完成</span>
                           </button>
                         )}
@@ -992,10 +1017,8 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
                               fontSize: '11.5px',
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '3px',
                             }}
                           >
-                            <CheckCircle2 size={11} color="var(--color-success)" />
                             <span>流转</span>
                           </button>
                         )}

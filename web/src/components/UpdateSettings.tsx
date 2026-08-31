@@ -1,19 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-type Status = {
-  current: string; latest: string; available: boolean; auto: boolean
-  supported: boolean; reason: string; busy: boolean; checkedAt: string; error: string
-}
-
-async function request(path = '', method = 'GET', body?: unknown): Promise<Status> {
-  const response = await fetch(`/api/v1/updates${path}`, {
-    method, headers: { 'Content-Type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  })
-  const result = await response.json()
-  if (!response.ok) throw new Error(result.message || '更新请求失败')
-  return result.data
-}
+import { requestUpdates as request, type UpdateStatus as Status } from '../api/updates'
 
 export function UpdateSettings() {
   const [status, setStatus] = useState<Status | null>(null)
@@ -64,7 +51,7 @@ export function UpdateSettings() {
       else if (path === '/check') setMessage(next.available ? '发现新版本，可以安装更新。' : '未发现更高的稳定版本。')
       else setMessage('自动更新设置已保存。')
     } catch (e) { setMessage(e instanceof Error ? e.message : '操作失败') }
-    finally { setBusy(false) }
+    finally { setBusy(false); window.dispatchEvent(new Event('updates-changed')) }
   }
   return <div className="settings-section-card">
     <div className="settings-section-header"><div>
@@ -73,6 +60,7 @@ export function UpdateSettings() {
     </div></div>
     {status && <>
       <p>当前版本：{status.current}　最新版本：{status.latest || '尚未获取'}</p>
+      {status.latest && <p style={{ overflowWrap: 'anywhere' }}>更新内容：{status.summary || '此版本暂未提供更新说明，请查看下载页。'}</p>}
       <p>最近检查：{status.checkedAt ? new Date(status.checkedAt).toLocaleString() : '尚未检查'}</p>
       {!status.supported && <p>{status.reason}</p>}
       <p>更新管理仅限在服务所在机器访问。开发版本不会自动升级。</p>

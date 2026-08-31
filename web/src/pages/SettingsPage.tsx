@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Server,
   Database,
@@ -24,15 +24,21 @@ import { api } from '../api/client'
 import { ReminderConfig, ReminderPreview, ServerConfig } from '../types'
 
 import { UpdateSettings } from '../components/UpdateSettings'
+import type { UpdateStatus } from '../api/updates'
+import '../components/UpdateNotice.css'
 
 type SettingsTab = 'jira' | 'reminders' | 'fields' | 'updates'
 
 export const SettingsPage: React.FC<{
   setupRequired: boolean
+  update: UpdateStatus | null
   onConfigured: (config: ServerConfig) => void
-}> = ({ setupRequired, onConfigured }) => {
+}> = ({ setupRequired, onConfigured, update }) => {
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<SettingsTab>('jira')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab = searchParams.get('tab')
+  const activeTab: SettingsTab = tab === 'reminders' || tab === 'fields' || tab === 'updates' ? tab : 'jira'
+  const setActiveTab = (next: SettingsTab) => setSearchParams({ tab: next }, { replace: true })
   const [config, setConfig] = useState<ServerConfig | null>(null)
   const [url, setUrl] = useState('')
   const [username, setUsername] = useState('')
@@ -260,7 +266,10 @@ export const SettingsPage: React.FC<{
               </span>
             </button>
             <button type="button" className={`settings-nav-item ${activeTab === 'updates' ? 'active' : ''}`} onClick={() => setActiveTab('updates')}>
-              <div className="settings-nav-label"><RefreshCw size={15} /><span>版本与更新</span></div>
+              <div className="settings-nav-label">
+                <RefreshCw size={15} /><span>版本与更新</span>
+                {update?.available && activeTab !== 'updates' && <span className="update-unread-dot" role="img" aria-label="有新版本可更新" />}
+              </div>
             </button>
             </>}
           </nav>

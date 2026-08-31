@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import {
+  Download,
   CalendarRange,
   CheckSquare,
   Clock,
@@ -9,8 +10,11 @@ import {
   FileText,
 } from 'lucide-react'
 import { api } from '../api/client'
+import { type UpdateStatus } from '../api/updates'
+import './UpdateNotice.css'
 
-export const Header: React.FC<{ configured: boolean }> = ({ configured }) => {
+export const Header: React.FC<{ configured: boolean; update: UpdateStatus | null }> = ({ configured, update }) => {
+  const { pathname } = useLocation()
   const [currentUser, setCurrentUser] = useState<any>(null)
 
   useEffect(() => {
@@ -68,6 +72,15 @@ export const Header: React.FC<{ configured: boolean }> = ({ configured }) => {
 
       {/* 右侧：连接用户与系统设置 */}
       <div data-ui="top-nav-right">
+        {update?.available && !/^\/settings(?:\/|$)/.test(pathname) && <NavLink
+          to="/settings?tab=updates"
+          className="update-notice"
+          title={`查看新版本 ${update.latest}`}
+        >
+          <Download size={16} aria-hidden="true" />
+          <span className="update-notice-copy">新版本已发布 {update.latest}</span>
+          <span className="update-unread-dot" aria-hidden="true" />
+        </NavLink>}
         <div
           data-ui="current-user"
           style={{

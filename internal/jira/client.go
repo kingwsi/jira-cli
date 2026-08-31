@@ -126,6 +126,7 @@ type RawIssueFields struct {
 	Parent                        *ParentRef     `json:"parent,omitempty"`
 	Subtasks                      []SubtaskRef   `json:"subtasks,omitempty"`
 	FixVersions                   []Version      `json:"fixVersions,omitempty"`
+	Attachment                    []Attachment   `json:"attachment,omitempty"`
 	ExtraFields                   map[string]any `json:"-"`
 }
 
@@ -203,6 +204,17 @@ type User struct {
 	Active       bool              `json:"active,omitempty"`
 	AvatarURLs   map[string]string `json:"avatarUrls,omitempty"`
 	AvatarURL    string            `json:"avatarUrl,omitempty"`
+}
+
+type Attachment struct {
+	ID        string `json:"id"`
+	Filename  string `json:"filename"`
+	Author    *User  `json:"author,omitempty"`
+	Created   string `json:"created,omitempty"`
+	Size      int64  `json:"size,omitempty"`
+	MimeType  string `json:"mimeType,omitempty"`
+	Content   string `json:"content,omitempty"`
+	Thumbnail string `json:"thumbnail,omitempty"`
 }
 
 type Worklog struct {
@@ -294,7 +306,7 @@ func (c *Client) Search(jql string, maxResults int) (*SearchResponse, error) {
 		"assignee", "reporter", "created", "updated", "duedate", "project",
 		"timeoriginalestimate", "aggregatetimeoriginalestimate", "timeestimate", "timespent", "aggregatetimespent",
 		"customfield_10300", "customfield_10301",
-		"parent", "subtasks", "fixVersions",
+		"parent", "subtasks", "fixVersions", "attachment",
 		"customfield_10815", "customfield_10814", "customfield_10808", "customfield_10809",
 		"customfield_10209", "customfield_10805", "customfield_10201", "customfield_10902",
 		"customfield_11000", "customfield_11002", "comment",
@@ -533,4 +545,52 @@ func (c *Client) SearchUsers(query string) ([]User, error) {
 		return nil, fmt.Errorf("用户选择器 API 错误 [%d]: %s; 用户搜索回退失败: %w", pickerResp.StatusCode(), pickerResp.String(), apiErr)
 	}
 	return users, nil
+}
+
+type AttachmentData struct {
+	Body        []byte
+	ContentType string
+	Filename    string
+}
+
+func (c *Client) DownloadAttachment(id, filename string, isThumb bool) (*AttachmentData, error) {
+	var targetURL string
+	if isThumb {
+		targetURL = fmt.Sprintf("%s/secure/thumbnail/%s/_thumb_%s.png", c.URL, id, id)
+	} else if filename != "" {
+		targetURL = fmt.Sprintf("%s/secure/attachment/%s/%s", c.URL, id, filename)
+	} else {
+		targetURL = fmt.Sprintf("%s/secure/attachment/%s/", c.URL, id)
+	}
+
+	resp, err := c.Client.R().Get(targetURL)
+	if err != nil {
+		return nil, fmt.Errorf("下载附件请求失败: %w", err)
+	}
+
+	if resp.IsError() {
+		if isThumb && filename != "" {
+			targetURL = fmt.Sprintf("%s/secure/attachment/%s/%s", c.URL, id, filename)
+			resp, err = c.Client.R().Get(targetURL)
+			if err != nil {
+				return nil, fmt.Errorf("回退下载附件失败: %w", err)
+			}
+			if resp.IsError() {
+				return nil, fmt.Errorf("附件下载失败 [%d]: %s", resp.StatusCode(), resp.Status())
+			}
+		} else {
+			return nil, fmt.Errorf("附件下载失败 [%d]: %s", resp.StatusCode(), resp.Status())
+		}
+	}
+
+	contentType := resp.Header().Get("Content-Type")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	return &AttachmentData{
+		Body:        resp.Body(),
+		ContentType: contentType,
+		Filename:    filename,
+	}, nil
 }

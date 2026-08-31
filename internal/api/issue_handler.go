@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -674,3 +675,85 @@ func (h *IssueHandler) UpdateWeeklyProgress(w http.ResponseWriter, r *http.Reque
 	})
 }
 
+func (h *IssueHandler) GetAttachment(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	filename := r.PathValue("filename")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "缺少附件 ID")
+		return
+	}
+
+	isThumb := r.URL.Query().Get("thumb") == "1" || r.URL.Query().Get("thumbnail") == "1"
+
+	client, err := jira.NewClient()
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	data, err := client.DownloadAttachment(id, filename, isThumb)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "获取附件失败: "+err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", data.ContentType)
+	w.Header().Set("Content-Length", strconv.Itoa(len(data.Body)))
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	if filename != "" {
+		w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename*=UTF-8''%s", url.PathEscape(filename)))
+	}
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data.Body)
+}
+
+func (h *IssueHandler) GetIssueAttachment(w http.ResponseWriter, r *http.Request) {
+	key := r.PathValue("key")
+	filename := r.PathValue("filename")
+	if key == "" || filename == "" {
+		writeError(w, http.StatusBadRequest, "缺少任务 Key 或文件名")
+		return
+	}
+
+	client, err := jira.NewClient()
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	issue, err := client.GetIssue(key)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "获取任务失败: "+err.Error())
+		return
+	}
+
+	// 查找匹配的附件
+	var targetAtt *jira.Attachment
+	targetLower := strings.ToLower(filename)
+	for i := range issue.Fields.Attachment {
+		att := &issue.Fields.Attachment[i]
+		if strings.EqualFold(att.Filename, filename) || strings.ToLower(att.Filename) == targetLower {
+			targetAtt = att
+			break
+		}
+	}
+
+	if targetAtt == nil {
+		writeError(w, http.StatusNotFound, "未找到对应名称的附件")
+		return
+	}
+
+	isThumb := r.URL.Query().Get("thumb") == "1" || r.URL.Query().Get("thumbnail") == "1"
+	data, err := client.DownloadAttachment(targetAtt.ID, targetAtt.Filename, isThumb)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "获取附件内容失败: "+err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", data.ContentType)
+	w.Header().Set("Content-Length", strconv.Itoa(len(data.Body)))
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename*=UTF-8''%s", url.PathEscape(targetAtt.Filename)))
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data.Body)
+}

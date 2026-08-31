@@ -30,6 +30,19 @@ type IssueItem struct {
 	Subtasks          []IssueItem     `json:"subtasks,omitempty"`
 	CustomFields      map[string]any  `json:"customFields,omitempty"`
 	ProgressReport    *ProgressReport `json:"progressReport,omitempty"`
+	Attachments       []Attachment    `json:"attachments,omitempty"`
+}
+
+type Attachment struct {
+	ID        string    `json:"id"`
+	Filename  string    `json:"filename"`
+	Author    *UserInfo `json:"author,omitempty"`
+	Created   string    `json:"created,omitempty"`
+	Size      int64     `json:"size,omitempty"`
+	MimeType  string    `json:"mimeType,omitempty"`
+	Content   string    `json:"content,omitempty"`
+	Thumbnail string    `json:"thumbnail,omitempty"`
+	URL       string    `json:"url,omitempty"`
 }
 
 type ProgressReport struct {

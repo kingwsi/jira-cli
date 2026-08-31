@@ -34,6 +34,18 @@ export interface CommentItem {
   updated: string
 }
 
+export interface Attachment {
+  id: string
+  filename: string
+  author?: UserInfo
+  created?: string
+  size?: number
+  mimeType?: string
+  content?: string
+  thumbnail?: string
+  url?: string
+}
+
 export interface IssueItem {
   key: string
   id: string
@@ -59,6 +71,7 @@ export interface IssueItem {
   subtasks?: IssueItem[]
   customFields?: Record<string, any>
   progressReport?: ProgressReport
+  attachments?: Attachment[]
 }
 
 export interface PlanningTreeNode {

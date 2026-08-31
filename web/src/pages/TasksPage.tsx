@@ -16,6 +16,8 @@ import { IssueItem } from '../types'
 import { TaskDrawer } from '../components/TaskDrawer'
 import { WorklogDrawer } from '../components/WorklogDrawer'
 import { TableSkeleton } from '../components/Skeleton'
+import { CopyKeyButton } from '../components/CopyKeyButton'
+import { OverflowTooltip } from '../components/OverflowTooltip'
 import { BugsPage } from './BugsPage'
 
 /** 格式化本地日期 YYYY-MM-DD */
@@ -341,7 +343,7 @@ export const TasksPage: React.FC = () => {
                   border: unresolvedBugsCount > 0 && activeTab !== 'bugs' ? '1px solid var(--border-danger)' : 'none',
                 }}
               >
-                {unresolvedBugsCount} 待解决
+                {unresolvedBugsCount}
               </span>
             </button>
 
@@ -542,7 +544,7 @@ export const TasksPage: React.FC = () => {
           <table data-ui="table">
             <thead>
               <tr>
-                <th style={{ width: '110px' }}>Key</th>
+                <th style={{ width: '125px' }}>Key</th>
                 <th>概要</th>
                 <th style={{ width: '110px' }}>类型</th>
                 <th style={{ width: '100px' }}>状态</th>
@@ -550,7 +552,7 @@ export const TasksPage: React.FC = () => {
                 <th style={{ width: '115px' }}>预计开始</th>
                 <th style={{ width: '115px' }}>预计结束</th>
                 <th style={{ width: '95px' }} title="已报工时 / 预估工时 (例如: 32/40)">预估工时</th>
-                <th style={{ width: '90px', textAlign: 'center' }}>操作</th>
+                <th style={{ width: '165px', textAlign: 'center' }}>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -579,10 +581,11 @@ export const TasksPage: React.FC = () => {
                           cursor: 'pointer',
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '4px',
+                          gap: '3px',
                           textDecoration: 'underline',
                           textDecorationColor: 'transparent',
                           transition: 'text-decoration-color 0.15s ease',
+                          whiteSpace: 'nowrap',
                         }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.textDecorationColor = isDone ? 'var(--text-muted)' : 'var(--color-primary)'
@@ -592,26 +595,26 @@ export const TasksPage: React.FC = () => {
                         }}
                       >
                         <span>{item.key}</span>
-                        <ExternalLink size={11} style={{ opacity: 0.6 }} />
+                        <ExternalLink size={10} style={{ opacity: 0.6 }} />
                       </span>
                     </td>
-                    <td>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                          <span
+                    <td style={{ maxWidth: '420px', minWidth: '220px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                          <OverflowTooltip
+                            text={item.summary}
                             style={{
                               fontWeight: 500,
                               textDecoration: isDone ? 'line-through' : 'none',
                               color: isDone ? 'var(--text-muted)' : 'inherit',
+                              flex: 1,
                             }}
-                          >
-                            {item.summary}
-                          </span>
+                          />
                           {dueTag && (
                             <span
                               data-ui="tag"
                               data-status={dueTag.status}
-                              style={{ fontSize: '11px', padding: '1px 6px', lineHeight: '1.2' }}
+                              style={{ fontSize: '11px', padding: '1px 6px', lineHeight: '1.2', flexShrink: 0 }}
                               title={dueTag.title}
                             >
                               {dueTag.label}
@@ -619,9 +622,13 @@ export const TasksPage: React.FC = () => {
                           )}
                         </div>
                         {item.parentKey && (
-                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                            ↳ {item.parentKey} {item.parentSummary}
-                          </span>
+                          <OverflowTooltip
+                            text={`↳ ${item.parentKey} ${item.parentSummary || ''}`}
+                            style={{
+                              fontSize: '11px',
+                              color: 'var(--text-muted)',
+                            }}
+                          />
                         )}
                       </div>
                     </td>
@@ -708,28 +715,34 @@ export const TasksPage: React.FC = () => {
                       })()}
                     </td>
                     <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                      <button
-                        data-ui="button"
-                        data-size="sm"
-                        data-variant="secondary"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setWorklogIssueKey(item.key)
-                          setWorklogDrawerOpen(true)
-                        }}
-                        style={{
-                          padding: '3px 8px',
-                          fontSize: '11.5px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          color: 'var(--color-primary)',
-                        }}
-                        title={`快捷登记 ${item.key} 工时`}
-                      >
-                        <Clock size={12} />
-                        <span>记工时</span>
-                      </button>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+                        <CopyKeyButton
+                          issueKey={item.key}
+                          summary={item.summary}
+                          assigneeName={item.assignee?.displayName || item.assignee?.name}
+                          jiraUrl={jiraUrl}
+                        />
+                        <button
+                          data-ui="button"
+                          data-size="sm"
+                          data-variant="secondary"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setWorklogIssueKey(item.key)
+                            setWorklogDrawerOpen(true)
+                          }}
+                          style={{
+                            padding: '3px 8px',
+                            fontSize: '11.5px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            color: 'var(--color-primary)',
+                          }}
+                          title={`快捷登记 ${item.key} 工时`}
+                        >
+                          <span>记工时</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )

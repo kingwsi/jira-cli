@@ -76,6 +76,9 @@ func NewRouter(reminderService *reminder.Service, updates ...*updater.Service) h
 	mux.HandleFunc("GET /api/v1/issues/{key}/comments", issueH.GetComments)
 	mux.HandleFunc("POST /api/v1/issues/{key}/comments", issueH.AddComment)
 	mux.HandleFunc("POST /api/v1/issues/{key}/progress", issueH.UpdateWeeklyProgress)
+	mux.HandleFunc("GET /api/v1/attachments/{id}/{filename}", issueH.GetAttachment)
+	mux.HandleFunc("GET /api/v1/attachments/{id}", issueH.GetAttachment)
+	mux.HandleFunc("GET /api/v1/issues/{key}/attachments/{filename}", issueH.GetIssueAttachment)
 
 	// 4. 排期与规划
 	mux.HandleFunc("GET /api/v1/planning/tree", planH.GetPlanningTree)

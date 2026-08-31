@@ -9,11 +9,15 @@ import {
   Tag,
   User,
   FileText,
+  Eye,
+  Edit3,
 } from 'lucide-react'
 import { IssueItem, CommentItem } from '../types'
 import { api } from '../api/client'
 import { DrawerSkeleton } from './Skeleton'
 import { WeeklyProgressModal } from './WeeklyProgressModal'
+import { JiraRenderer } from './JiraRenderer'
+import { AttachmentGallery } from './AttachmentGallery'
 
 interface TaskOrderDrawerProps {
   issueKey: string | null
@@ -41,6 +45,7 @@ export const TaskOrderDrawer: React.FC<TaskOrderDrawerProps> = ({
   // Edit fields
   const [summary, setSummary] = useState('')
   const [description, setDescription] = useState('')
+  const [isEditingDescription, setIsEditingDescription] = useState(false)
 
   useEffect(() => {
     api
@@ -61,6 +66,7 @@ export const TaskOrderDrawer: React.FC<TaskOrderDrawerProps> = ({
       setIssue(issueData)
       setSummary(issueData.summary)
       setDescription(issueData.description || '')
+      setIsEditingDescription(false)
       setComments(commentList || [])
     })
   }
@@ -546,15 +552,86 @@ export const TaskOrderDrawer: React.FC<TaskOrderDrawerProps> = ({
 
               {/* 详细描述 */}
               <div data-ui="form-group">
-                <label data-ui="form-label">详细描述</label>
-                <textarea
-                  data-ui="textarea"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="暂无描述..."
-                  style={{ minHeight: '100px' }}
-                />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <label data-ui="form-label" style={{ margin: 0 }}>详细描述</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <button
+                      type="button"
+                      data-ui="button"
+                      data-variant={!isEditingDescription ? 'primary' : 'secondary'}
+                      data-size="sm"
+                      onClick={() => setIsEditingDescription(false)}
+                      style={{ padding: '2px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      <Eye size={12} />
+                      <span>预览视图</span>
+                    </button>
+                    <button
+                      type="button"
+                      data-ui="button"
+                      data-variant={isEditingDescription ? 'primary' : 'secondary'}
+                      data-size="sm"
+                      onClick={() => setIsEditingDescription(true)}
+                      style={{ padding: '2px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      <Edit3 size={12} />
+                      <span>编辑模式</span>
+                    </button>
+                  </div>
+                </div>
+
+                {!isEditingDescription ? (
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      backgroundColor: 'var(--bg-surface)',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-default)',
+                      minHeight: '80px',
+                      maxHeight: '400px',
+                      overflowY: 'auto',
+                    }}
+                  >
+                    {description ? (
+                      <JiraRenderer
+                        text={description}
+                        attachments={issue.attachments}
+                        issueKey={issue.key}
+                        jiraBaseUrl={jiraBaseUrl}
+                      />
+                    ) : (
+                      <span
+                        style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '13px', cursor: 'pointer' }}
+                        onClick={() => setIsEditingDescription(true)}
+                      >
+                        暂无详细描述，点击添加...
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <textarea
+                      data-ui="textarea"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="暂无描述（支持 Jira 格式及 !image.png! 图片语法）..."
+                      style={{ minHeight: '100px' }}
+                      autoFocus
+                    />
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      💡 支持 Jira 语法：<code>!image.png!</code> 插入图片、<code>*加粗*</code>、<code>&#123;code&#125;代码&#123;code&#125;</code> 等
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* 附件列表 */}
+              {issue.attachments && issue.attachments.length > 0 && (
+                <AttachmentGallery
+                  attachments={issue.attachments}
+                  issueKey={issue.key}
+                />
+              )}
 
               {/* 历史周报与备注时间轴 */}
               <div
@@ -678,14 +755,13 @@ export const TaskOrderDrawer: React.FC<TaskOrderDrawerProps> = ({
                             {c.created ? c.created.slice(0, 16).replace('T', ' ') : ''}
                           </span>
                         </div>
-                        <div
-                          style={{
-                            color: 'var(--text-primary)',
-                            whiteSpace: 'pre-wrap',
-                            lineHeight: '1.5',
-                          }}
-                        >
-                          {c.body}
+                        <div>
+                          <JiraRenderer
+                            text={c.body}
+                            attachments={issue.attachments}
+                            issueKey={issue.key}
+                            jiraBaseUrl={jiraBaseUrl}
+                          />
                         </div>
                       </div>
                     ))}

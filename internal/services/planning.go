@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -328,6 +329,36 @@ func (s *PlanningService) ConvertIssue(raw jira.Issue) models.IssueItem {
 				ParentSummary: raw.Fields.Summary,
 			}
 			item.Subtasks = append(item.Subtasks, subItem)
+		}
+	}
+
+	// 解析附件
+	if len(raw.Fields.Attachment) > 0 {
+		for _, att := range raw.Fields.Attachment {
+			var author *models.UserInfo
+			if att.Author != nil {
+				dispName := att.Author.DisplayName
+				if dispName == "" {
+					dispName = att.Author.Name
+				}
+				author = &models.UserInfo{
+					AccountID:    att.Author.AccountID,
+					Name:         att.Author.Name,
+					DisplayName:  dispName,
+					EmailAddress: att.Author.EmailAddress,
+				}
+			}
+			item.Attachments = append(item.Attachments, models.Attachment{
+				ID:        att.ID,
+				Filename:  att.Filename,
+				Author:    author,
+				Created:   att.Created,
+				Size:      att.Size,
+				MimeType:  att.MimeType,
+				Content:   att.Content,
+				Thumbnail: att.Thumbnail,
+				URL:       fmt.Sprintf("/api/v1/attachments/%s/%s", att.ID, url.PathEscape(att.Filename)),
+			})
 		}
 	}
 

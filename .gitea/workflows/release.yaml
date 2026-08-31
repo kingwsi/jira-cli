@@ -96,7 +96,7 @@ jobs:
           # 3. 生成版本元数据 version.json
           export VERSION BUILD_TIME
           python3 - <<'PYTHON'
-          import hashlib, json, os, pathlib, shutil
+          import hashlib, json, os, pathlib, shutil, subprocess
           latest = pathlib.Path('dist/latest')
           release = pathlib.Path('dist/releases') / os.environ['VERSION']
           release.mkdir(parents=True)
@@ -105,6 +105,7 @@ jobs:
               checksums[archive.name] = hashlib.sha256(archive.read_bytes()).hexdigest()
               shutil.copy2(archive, release / archive.name)
           metadata = dict(version=os.environ['VERSION'], built_at=os.environ['BUILD_TIME'],
+                          summary=subprocess.check_output(['python3', 'deploy/release-summary.py', os.environ['VERSION']], text=True).strip(),
                           download_base=os.environ['DOWNLOAD_BASE_URL'] + '/releases/' + os.environ['VERSION'],
                           checksums=checksums)
           (latest / 'version.json').write_text(json.dumps(metadata, indent=2) + '\n')

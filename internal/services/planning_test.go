@@ -76,3 +76,37 @@ func TestBuildWorklogWeekView(t *testing.T) {
 		t.Fatalf("expected daily total 4h on 08-26, got %d", got)
 	}
 }
+
+func TestConvertIssueAttachments(t *testing.T) {
+	service := NewPlanningService(nil, "", "")
+	raw := jira.Issue{
+		Key: "BUG-101",
+		ID:  "10001",
+		Fields: jira.RawIssueFields{
+			Summary:     "测试缺陷",
+			Description: "请看截图：!image-2026-08-26.png!",
+			IssueType:   jira.IssueType{Name: "Bug"},
+			Status:      jira.Status{Name: "待办"},
+			Attachment: []jira.Attachment{
+				{
+					ID:       "2001",
+					Filename: "image-2026-08-26.png",
+					Size:     10240,
+					MimeType: "image/png",
+				},
+			},
+		},
+	}
+
+	item := service.ConvertIssue(raw)
+	if len(item.Attachments) != 1 {
+		t.Fatalf("expected 1 attachment, got %d", len(item.Attachments))
+	}
+	att := item.Attachments[0]
+	if att.ID != "2001" || att.Filename != "image-2026-08-26.png" {
+		t.Fatalf("unexpected attachment: %+v", att)
+	}
+	if att.URL != "/api/v1/attachments/2001/image-2026-08-26.png" {
+		t.Fatalf("unexpected URL: %s", att.URL)
+	}
+}

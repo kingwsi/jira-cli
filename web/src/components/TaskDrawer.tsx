@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { X, Clock, ArrowRight, ExternalLink, User } from 'lucide-react'
+import { X, Clock, ArrowRight, ExternalLink, User, Eye, Edit3 } from 'lucide-react'
 import { IssueItem, Transition } from '../types'
 import { api } from '../api/client'
 import { DatePicker } from './DatePicker'
 import { DrawerSkeleton } from './Skeleton'
+import { JiraRenderer } from './JiraRenderer'
+import { AttachmentGallery } from './AttachmentGallery'
 
 interface TaskDrawerProps {
   issueKey: string | null
@@ -22,6 +24,7 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ issueKey, onClose, onUpd
   // Edit fields
   const [summary, setSummary] = useState('')
   const [description, setDescription] = useState('')
+  const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [originalEstimate, setOriginalEstimate] = useState('')
@@ -58,6 +61,7 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ issueKey, onClose, onUpd
         setIssue(issueData)
         setSummary(issueData.summary)
         setDescription(issueData.description || '')
+        setIsEditingDescription(false)
         setStartDate(issueData.startDate || '')
         setEndDate(issueData.endDate || '')
         if (issueData.originalEstimateSeconds && issueData.originalEstimateSeconds > 0) {
@@ -305,15 +309,86 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ issueKey, onClose, onUpd
 
               {/* 描述 */}
               <div data-ui="form-group">
-                <label data-ui="form-label">详细描述</label>
-                <textarea
-                  data-ui="textarea"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="暂无描述..."
-                  style={{ minHeight: '120px' }}
-                />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <label data-ui="form-label" style={{ margin: 0 }}>详细描述</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <button
+                      type="button"
+                      data-ui="button"
+                      data-variant={!isEditingDescription ? 'primary' : 'secondary'}
+                      data-size="sm"
+                      onClick={() => setIsEditingDescription(false)}
+                      style={{ padding: '2px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      <Eye size={12} />
+                      <span>预览视图</span>
+                    </button>
+                    <button
+                      type="button"
+                      data-ui="button"
+                      data-variant={isEditingDescription ? 'primary' : 'secondary'}
+                      data-size="sm"
+                      onClick={() => setIsEditingDescription(true)}
+                      style={{ padding: '2px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      <Edit3 size={12} />
+                      <span>编辑模式</span>
+                    </button>
+                  </div>
+                </div>
+
+                {!isEditingDescription ? (
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      backgroundColor: 'var(--bg-surface)',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-default)',
+                      minHeight: '90px',
+                      maxHeight: '450px',
+                      overflowY: 'auto',
+                    }}
+                  >
+                    {description ? (
+                      <JiraRenderer
+                        text={description}
+                        attachments={issue.attachments}
+                        issueKey={issue.key}
+                        jiraBaseUrl={jiraBaseUrl}
+                      />
+                    ) : (
+                      <span
+                        style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '13px', cursor: 'pointer' }}
+                        onClick={() => setIsEditingDescription(true)}
+                      >
+                        暂无详细描述，点击添加...
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <textarea
+                      data-ui="textarea"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="输入详细描述（支持 Jira Wiki 格式及 !image.png! 图片语法）..."
+                      style={{ minHeight: '120px' }}
+                      autoFocus
+                    />
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      💡 支持 Jira 语法：<code>!image.png!</code> 插入图片、<code>*加粗*</code>、<code>&#123;code&#125;代码&#123;code&#125;</code>、表格等
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* 附件列表 */}
+              {issue.attachments && issue.attachments.length > 0 && (
+                <AttachmentGallery
+                  attachments={issue.attachments}
+                  issueKey={issue.key}
+                />
+              )}
 
               {/* 子任务列表 */}
               {issue.subtasks && issue.subtasks.length > 0 && (

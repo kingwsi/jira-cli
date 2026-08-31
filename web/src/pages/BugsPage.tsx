@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { Bug, RotateCcw, Search, User, ExternalLink, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { Bug, RotateCcw, Search, User, AlertTriangle, ExternalLink } from 'lucide-react'
 import { api } from '../api/client'
 import { IssueItem } from '../types'
 import { TaskDrawer } from '../components/TaskDrawer'
 import { QuickResolveModal } from '../components/QuickResolveModal'
 import { TableSkeleton } from '../components/Skeleton'
+import { CopyKeyButton } from '../components/CopyKeyButton'
+import { OverflowTooltip } from '../components/OverflowTooltip'
 
 export interface BugsPageProps {
   embedded?: boolean
@@ -177,14 +179,14 @@ export const BugsPage: React.FC<BugsPageProps> = ({ embedded = false, onUnresolv
           <table data-ui="table">
             <thead>
               <tr>
-                <th style={{ width: '120px' }}>Key</th>
+                <th style={{ width: '125px' }}>Key</th>
                 <th>缺陷概要</th>
                 <th style={{ width: '90px' }}>严重级别</th>
                 <th style={{ width: '110px' }}>状态</th>
                 <th style={{ width: '120px' }}>经办人</th>
                 <th style={{ width: '110px' }}>报告人</th>
                 <th style={{ width: '120px' }}>预计解决</th>
-                <th style={{ width: '90px', textAlign: 'center' }}>操作</th>
+                <th style={{ width: '165px', textAlign: 'center' }}>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -204,10 +206,11 @@ export const BugsPage: React.FC<BugsPageProps> = ({ embedded = false, onUnresolv
                         cursor: 'pointer',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '4px',
+                        gap: '3px',
                         textDecoration: 'underline',
                         textDecorationColor: 'transparent',
                         transition: 'text-decoration-color 0.15s ease',
+                        whiteSpace: 'nowrap',
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.textDecorationColor = 'var(--color-danger)'
@@ -217,16 +220,25 @@ export const BugsPage: React.FC<BugsPageProps> = ({ embedded = false, onUnresolv
                       }}
                     >
                       <span>{item.key}</span>
-                      <ExternalLink size={11} style={{ opacity: 0.6 }} />
+                      <ExternalLink size={10} style={{ opacity: 0.6 }} />
                     </span>
                   </td>
-                  <td>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                      <span style={{ fontWeight: 500 }}>{item.summary}</span>
+                  <td style={{ maxWidth: '420px', minWidth: '220px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
+                      <OverflowTooltip
+                        text={item.summary}
+                        style={{
+                          fontWeight: 500,
+                        }}
+                      />
                       {item.parentKey && (
-                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                          ↳ 关联需求: {item.parentKey} {item.parentSummary}
-                        </span>
+                        <OverflowTooltip
+                          text={`↳ 关联需求: ${item.parentKey} ${item.parentSummary || ''}`}
+                          style={{
+                            fontSize: '11px',
+                            color: 'var(--text-muted)',
+                          }}
+                        />
                       )}
                     </div>
                   </td>
@@ -271,55 +283,61 @@ export const BugsPage: React.FC<BugsPageProps> = ({ embedded = false, onUnresolv
                     {item.endDate || '-'}
                   </td>
                   <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                    {item.statusCategory !== 'Done' ? (
-                      <button
-                        data-ui="button"
-                        data-variant="primary"
-                        data-size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          const rect = e.currentTarget.getBoundingClientRect()
-                          setResolvingAnchorRect(rect)
-                          setResolvingIssue(item)
-                        }}
-                        title="快捷流转并指派给创建人"
-                        style={{
-                          padding: '3px 8px',
-                          fontSize: '12px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          backgroundColor: 'var(--color-success)',
-                          borderColor: 'var(--color-success)',
-                          color: '#fff',
-                        }}
-                      >
-                        处理
-                      </button>
-                    ) : (
-                      <button
-                        data-ui="button"
-                        data-variant="secondary"
-                        data-size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          const rect = e.currentTarget.getBoundingClientRect()
-                          setResolvingAnchorRect(rect)
-                          setResolvingIssue(item)
-                        }}
-                        title="变更流转状态或指派人员"
-                        style={{
-                          padding: '3px 8px',
-                          fontSize: '12px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                        }}
-                      >
-                        <CheckCircle2 size={13} color="var(--color-success)" />
-                        <span>流转</span>
-                      </button>
-                    )}
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+                      <CopyKeyButton
+                        issueKey={item.key}
+                        summary={item.summary}
+                        assigneeName={item.assignee?.displayName || item.assignee?.name}
+                        jiraUrl={jiraUrl}
+                      />
+                      {item.statusCategory !== 'Done' ? (
+                        <button
+                          data-ui="button"
+                          data-variant="primary"
+                          data-size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const rect = e.currentTarget.getBoundingClientRect()
+                            setResolvingAnchorRect(rect)
+                            setResolvingIssue(item)
+                          }}
+                          title="快捷流转并指派给创建人"
+                          style={{
+                            padding: '3px 8px',
+                            fontSize: '12px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            backgroundColor: 'var(--color-success)',
+                            borderColor: 'var(--color-success)',
+                            color: '#fff',
+                          }}
+                        >
+                          处理
+                        </button>
+                      ) : (
+                        <button
+                          data-ui="button"
+                          data-variant="secondary"
+                          data-size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const rect = e.currentTarget.getBoundingClientRect()
+                            setResolvingAnchorRect(rect)
+                            setResolvingIssue(item)
+                          }}
+                          title="变更流转状态或指派人员"
+                          style={{
+                            padding: '3px 8px',
+                            fontSize: '12px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <span>流转</span>
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

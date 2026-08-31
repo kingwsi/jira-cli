@@ -8,9 +8,33 @@ import { RequirementsPage } from './pages/RequirementsPage'
 import { WorklogsPage } from './pages/WorklogsPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { api } from './api/client'
+import { requestUpdates, type UpdateStatus } from './api/updates'
 import { ServerConfig } from './types'
 
 export const App: React.FC = () => {
+  const [update, setUpdate] = useState<UpdateStatus | null>(null)
+
+  useEffect(() => {
+    let active = true
+    const refresh = async () => {
+      try {
+        const next = await requestUpdates()
+        if (active) setUpdate(next)
+      } catch { /* A failed status request must not interrupt navigation. */ }
+    }
+    void refresh()
+    const timer = window.setInterval(refresh, 30000)
+    window.addEventListener('updates-changed', refresh)
+    window.addEventListener('focus', refresh)
+    return () => {
+      active = false
+      window.clearInterval(timer)
+      window.removeEventListener('updates-changed', refresh)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [])
+
+
   const [config, setConfig] = useState<ServerConfig | null>(null)
   const [error, setError] = useState('')
   const [attempt, setAttempt] = useState(0)
@@ -36,11 +60,11 @@ export const App: React.FC = () => {
   }
 
   const setupRequired = !config.isConfigured
-  const settings = <SettingsPage setupRequired={setupRequired} onConfigured={setConfig} />
+  const settings = <SettingsPage setupRequired={setupRequired} onConfigured={setConfig} update={update} />
 
   return (
     <div data-ui="admin-shell">
-      <Header configured={config.isConfigured} />
+      <Header configured={config.isConfigured} update={update} />
       <main data-ui="admin-main">
         {setupRequired ? (
           <Routes>
