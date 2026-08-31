@@ -40,23 +40,27 @@ make dev-web
 make build
 # 或: ./build.sh
 
-# 运行单二进制服务 (默认监听 0.0.0.0:8080，支持局域网访问)
+# 运行单二进制服务 (默认监听 0.0.0.0:8899，支持局域网访问)
 ./jira
 
-# 运行并自动在默认浏览器中打开页面
+# 后台运行并自动在默认浏览器中打开页面
 ./jira -open
 
 # 指定端口与监听地址
 ./jira -p 9000 -H 127.0.0.1
 ```
 
+`jira -open` 会在服务成功监听后打印访问地址、后台进程 PID、日志路径及停止命令，然后退出当前命令，服务不随终端关闭而退出。日志保存在 `~/.jira-workbench/logs/`（每次启动单独一个文件）。端口被占用时会报错，不会误报启动成功；可使用 `-p` 指定其他端口。直接运行 `jira` 仍以前台方式运行，按 Ctrl+C 停止。开发代理和 Docker 仍显式使用 8080，不受默认端口调整影响。
+
+正式版本启动时会自动检查更新，发现新版会在启动输出和后台日志中提醒；检查最多等待 3 秒，失败不影响服务运行，之后每 6 小时再次检查。默认只提醒，不自动安装；已在设置中启用的自动更新行为保持不变。
+
 ### 命令行选项说明
 
 | 选项 | 简写 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- |
-| `--port` | `-p` | `8080` | Web 服务监听端口 |
+| `--port` | `-p` | `8899` | Web 服务监听端口 |
 | `--host` | `-H` | `0.0.0.0` | 监听地址（`0.0.0.0` 允许局域网设备访问） |
-| `--open` | | `false` | 服务启动后自动在默认浏览器中打开页面 |
+| `--open` | | `false` | 后台启动服务并在默认浏览器中打开页面 |
 | `--version` | `-v` | `false` | 查看版本号 |
 | `--help` | `-h` | | 查看帮助信息 |
 
@@ -64,7 +68,7 @@ make build
 
 ## ⚙️ 首次使用配置
 
-首次启动后，在 Web 界面左下角点击 **设置 (Settings)**，输入您的 Jira 服务器地址与账号密码：
+首次打开工作台时，如果尚未配置完整的 Jira 连接信息，会自动进入 **设置 → Jira 实例连接**；此时其他功能暂不可用。输入以下信息并点击 **验证并进入工作台**，连通性验证通过且保存成功后自动进入待办页：
 - **Jira URL**：例如 `https://jira.yourcompany.com`
 - **用户名 / 密码**：您的 Jira 账户凭据
 
@@ -143,6 +147,6 @@ GitHub 的托管 Runner 不使用这台服务器的目录映射，因此 `.githu
 
 一键安装命令 `curl -fsSL https://nextx.uk/jira-work/install.sh | bash` 仅面向已提供安装包的 macOS arm64/amd64 和 Linux amd64。脚本会下载其内嵌版本对应的 `/releases/vX.Y.Z/` 包并校验 SHA-256；Windows 请手动下载 Windows 包，解压后运行 `jira.exe`，或在 PowerShell 中运行 `.\jira.exe -open`。Git Bash 不会被当作 Linux 安装，WSL 安装的是 Linux 程序。
 
-安装脚本使用普通用户运行即可，不需要 sudo，程序安装到 `~/.local/bin/jira`。如果该目录不在 PATH 中，请将 `export PATH="$HOME/.local/bin:$PATH"` 加入 `~/.zshrc` 或 `~/.bashrc`，并在当前终端执行；也可以直接运行 `~/.local/bin/jira -open`。脚本不会自动修改 shell 配置或删除原来安装在 `/usr/local/bin` 的版本。
+安装过程显示下载进度条及下载、校验、解压、安装四个阶段。安装脚本使用普通用户运行即可，不需要 sudo，程序安装到 `~/.local/bin/jira`。如果该目录不在 PATH 中，请将 `export PATH="$HOME/.local/bin:$PATH"` 加入 `~/.zshrc` 或 `~/.bashrc`，并在当前终端执行；也可以直接运行 `~/.local/bin/jira -open`。脚本不会自动修改 shell 配置或删除原来安装在 `/usr/local/bin` 的版本。
 
 使用 Cloudflare 缓存时，请对 `/jira-work/install.sh`、`/jira-work/latest/version.json` 和落地页绕过缓存或设置合适的短缓存，并清除已有缓存；`/jira-work/releases/*` 可长期缓存。固定入口脚本如果仍被缓存，仍可能安装其内嵌的旧版本。

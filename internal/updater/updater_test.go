@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -15,11 +16,48 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 type transport func(*http.Request) (*http.Response, error)
 
 func (f transport) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func TestStartupUpdateNotice(t *testing.T) {
+	for _, tc := range []struct{ current, latest, want string }{
+		{"v1.0.3", "v1.0.4", "发现新版本 v1.0.4"},
+		{"v1.0.3", "v1.0.3", ""},
+		{"v1.0.3", "v1.0.2", ""},
+		{"v1.0.3", "failure", "检查更新失败（不影响服务运行）"},
+		{"dev", "v1.0.4", ""},
+	} {
+		t.Run(tc.current+"/"+tc.latest, func(t *testing.T) {
+			s := New(tc.current, func() { t.Fatal("check must not restart") })
+			s.client.Transport = transport(func(r *http.Request) (*http.Response, error) {
+				if tc.current == "dev" {
+					t.Fatal("dev builds must skip update check")
+				}
+				deadline, ok := r.Context().Deadline()
+				if !ok || time.Until(deadline) > 3*time.Second {
+					t.Fatal("missing bounded timeout")
+				}
+				if r.Header.Get("Cache-Control") != "no-cache" {
+					t.Fatal("metadata must revalidate cache")
+				}
+				if tc.latest == "failure" {
+					return nil, fmt.Errorf("offline")
+				}
+				return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"version":"` + tc.latest + `"}`)), Header: make(http.Header)}, nil
+			})
+			var out bytes.Buffer
+			s.CheckAndNotify(context.Background(), &out)
+			if tc.want == "" && out.Len() != 0 || !strings.Contains(out.String(), tc.want) {
+				t.Fatalf("unexpected notice: %s", out.String())
+			}
+		})
+	}
+}
+
 func TestVersionComparison(t *testing.T) {
 	for _, tc := range []struct {
 		a, b string

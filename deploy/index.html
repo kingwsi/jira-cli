@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0b0f19" />
-  <meta name="description" content="Jira Workbench — 专为 Jira 打造的现代化轻量级排期与敏捷协同工作台。" />
+  <meta name="description" content="Jira Workbench — 专为 Jira 打造的现代化轻量级排期与敏捷协同工作台。单二进制分发，零外部依赖。" />
   <title>Jira Workbench</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,284 +12,638 @@
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <style>
-    :root{
-      --bg:#0b0f19;
-      --panel:#0f172a;
-      --text:#dbeafe;
-      --muted:#64748b;
-      --line:#334155;
-      --accent:#7dd3fc;
-      --accent2:#a7f3d0;
-      --warn:#fde68a;
-      --max:980px;
+    :root {
+      --bg: #0b0f19;
+      --panel: #0f172a;
+      --panel-hover: #131d35;
+      --text: #dbeafe;
+      --text-bright: #f8fafc;
+      --muted: #64748b;
+      --line: #334155;
+      --line-light: #1e293b;
+      --accent: #7dd3fc;
+      --accent2: #a7f3d0;
+      --accent3: #fde68a;
+      --warn: #fb923c;
+      --max: 980px;
     }
 
-    *{box-sizing:border-box}
-    html{scroll-behavior:smooth}
-    body{
-      margin:0;
-      min-height:100vh;
-      color:var(--text);
-      background:var(--bg);
-      font-family:"JetBrains Mono","SFMono-Regular",Consolas,monospace;
-      letter-spacing:-0.01em;
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background: var(--bg);
+      font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+      letter-spacing: -0.01em;
     }
 
-    body::before{
-      content:"";
-      position:fixed;
-      inset:0;
-      pointer-events:none;
-      background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px);
-      background-size:100% 28px;
-      mask-image:linear-gradient(to bottom,black,transparent 90%);
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image: linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px);
+      background-size: 100% 28px;
+      mask-image: linear-gradient(to bottom, black, transparent 95%);
     }
 
-    a{color:inherit;text-decoration:none}
-    button{font:inherit}
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; }
 
-    .wrap{
-      width:min(calc(100% - 28px),var(--max));
-      margin:0 auto;
-      padding:44px 0 56px;
+    .wrap {
+      width: min(calc(100% - 32px), var(--max));
+      margin: 0 auto;
+      padding: 36px 0 60px;
     }
 
-    .topline{
-      display:flex;
-      justify-content:space-between;
-      gap:16px;
-      color:var(--muted);
-      font-size:12px;
-      margin-bottom:28px;
+    .topline {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line-light);
     }
 
-    .brand{
-      color:var(--accent);
-      font-weight:700;
+    .brand {
+      color: var(--accent);
+      font-weight: 700;
     }
 
-    .hero{
-      padding:28px 0 30px;
-      border-top:1px solid var(--line);
-      border-bottom:1px solid var(--line);
+    .hero {
+      padding: 16px 0 28px;
+      border-bottom: 1px solid var(--line);
     }
 
-    .ascii-logo{
-      margin:0 0 22px;
-      color:#e2e8f0;
-      font-size:clamp(11px,2vw,16px);
-      line-height:1.25;
-      white-space:pre;
-      overflow-x:auto;
+    /* 字符艺术标题 (ASCII Art) */
+    .ascii-banner {
+      margin: 0 0 18px 0;
+      color: var(--accent);
+      background: linear-gradient(135deg, #7dd3fc 0%, #a7f3d0 65%, #bae6fd 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 24px rgba(125, 211, 252, 0.12);
+      font-size: clamp(7px, 1.35vw, 13px);
+      line-height: 1.18;
+      white-space: pre;
+      overflow-x: auto;
+      font-weight: 700;
+      user-select: none;
     }
 
-    h1{
-      margin:0;
-      font-size:clamp(28px,6vw,54px);
-      line-height:1;
-      letter-spacing:-0.05em;
-      font-weight:700;
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
 
-    .subtitle{
-      margin-top:16px;
-      max-width:740px;
-      color:#94a3b8;
-      font-size:14px;
-      line-height:1.8;
+    .subtitle {
+      max-width: 780px;
+      color: #94a3b8;
+      font-size: 13.5px;
+      line-height: 1.8;
     }
 
-    .install{
-      margin-top:34px;
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
     }
 
-    .section-title{
-      color:var(--accent);
-      font-size:12px;
-      margin-bottom:10px;
+    .tag {
+      padding: 3px 9px;
+      font-size: 11px;
+      border: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+      color: #cbd5e1;
     }
 
-    .command{
-      display:flex;
-      align-items:stretch;
-      border:1px solid var(--line);
-      background:#0a101b;
+    .tag span {
+      color: var(--accent2);
     }
 
-    .command-prefix{
-      padding:16px 0 16px 16px;
-      color:var(--accent2);
-      user-select:none;
+    /* 上半部快速安装区 (轻量、紧凑) */
+    .section-title {
+      color: var(--accent);
+      font-size: 12px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
 
-    .command-text{
-      flex:1;
-      min-width:0;
-      padding:16px 10px;
-      overflow-x:auto;
-      white-space:nowrap;
-      color:#e2e8f0;
-      font-size:13px;
+    .os-tabs-nav {
+      display: flex;
+      gap: 2px;
+      border-bottom: 1px solid var(--line);
+      margin-top: 28px;
     }
 
-    .copy{
-      width:58px;
-      border:0;
-      border-left:1px solid var(--line);
-      color:var(--muted);
-      background:transparent;
-      cursor:pointer;
+    .os-tab-btn {
+      padding: 9px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      background: #080d16;
+      border: 1px solid var(--line);
+      border-bottom: 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: .15s ease;
+      margin-bottom: -1px;
     }
 
-    .copy:hover{
-      color:var(--accent);
-      background:rgba(125,211,252,.035);
+    .os-tab-btn:hover {
+      color: var(--text-bright);
+      background: #0f172a;
     }
 
-    .steps{
-      margin-top:14px;
-      display:grid;
-      grid-template-columns:repeat(3,1fr);
-      border:1px solid var(--line);
-      border-top:0;
+    .os-tab-btn.active {
+      color: var(--accent);
+      background: var(--panel);
+      border-color: var(--line);
+      border-bottom: 1px solid var(--panel);
     }
 
-    .step{
-      padding:14px 16px;
-      min-height:74px;
-      border-right:1px solid var(--line);
-      color:#94a3b8;
-      font-size:12px;
-      line-height:1.7;
+    .os-badge {
+      font-size: 9px;
+      padding: 1px 5px;
+      background: rgba(125, 211, 252, 0.12);
+      color: var(--accent);
+      border: 1px solid rgba(125, 211, 252, 0.3);
     }
 
-    .step:last-child{border-right:0}
-
-    .step b{
-      display:block;
-      margin-bottom:4px;
-      color:#e2e8f0;
-      font-weight:600;
+    .os-panel {
+      display: none;
+      padding: 20px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-top: 0;
     }
 
-    .step b::before{
-      content:"> ";
-      color:var(--accent2);
+    .os-panel.active {
+      display: block;
     }
 
-    .downloads{
-      margin-top:38px;
+    /* 紧凑命令框 */
+    .command {
+      display: flex;
+      align-items: stretch;
+      border: 1px solid var(--line);
+      background: #070d18;
     }
 
-    .download-grid{
-      display:grid;
-      grid-template-columns:repeat(2,1fr);
-      border-top:1px solid var(--line);
-      border-left:1px solid var(--line);
+    .command-prefix {
+      padding: 12px 0 12px 14px;
+      color: var(--accent2);
+      user-select: none;
+      font-size: 12px;
     }
 
-    .download{
-      position:relative;
-      min-height:112px;
-      padding:18px;
-      border-right:1px solid var(--line);
-      border-bottom:1px solid var(--line);
-      transition:.15s ease;
+    .command-text {
+      flex: 1;
+      min-width: 0;
+      padding: 12px 10px;
+      overflow-x: auto;
+      white-space: nowrap;
+      color: #f1f5f9;
+      font-size: 12.5px;
     }
 
-    .download:hover{
-      background:#0d1422;
+    .copy {
+      min-width: 58px;
+      padding: 0 12px;
+      border: 0;
+      border-left: 1px solid var(--line);
+      color: var(--muted);
+      background: transparent;
+      cursor: pointer;
+      font-size: 11px;
+      transition: .15s ease;
     }
 
-    .download.recommended::before{
-      content:"[recommended]";
-      position:absolute;
-      right:14px;
-      top:14px;
-      color:var(--accent2);
-      font-size:10px;
+    .copy:hover {
+      color: var(--accent);
+      background: rgba(125, 211, 252, 0.06);
     }
 
-    .platform{
-      color:#e2e8f0;
-      font-size:13px;
-      font-weight:600;
+    /* 快捷操作栏 */
+    .panel-quick-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+      align-items: center;
+      justify-content: space-between;
     }
 
-    .platform::before{
-      content:"[ ";
-      color:var(--muted);
+    .action-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
-    .platform::after{
-      content:" ]";
-      color:var(--muted);
+    .chip-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      font-size: 11.5px;
+      border: 1px solid var(--line);
+      background: #080f1d;
+      color: #cbd5e1;
+      cursor: pointer;
+      transition: .15s ease;
     }
 
-    .meta{
-      margin-top:9px;
-      color:var(--muted);
-      font-size:11px;
+    .chip-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--panel-hover);
     }
 
-    .download-action{
-      margin-top:15px;
-      color:var(--accent);
-      font-size:11px;
+    .chip-btn.primary {
+      border-color: rgba(167, 243, 208, 0.5);
+      color: var(--accent2);
+      background: rgba(167, 243, 208, 0.06);
     }
 
-    .download-action::before{
-      content:"-> ";
-      color:var(--accent2);
+    .chip-btn.primary:hover {
+      border-color: var(--accent2);
+      background: rgba(167, 243, 208, 0.12);
     }
 
-    .footer{
-      margin-top:34px;
-      padding-top:18px;
-      border-top:1px dashed var(--line);
-      display:flex;
-      justify-content:space-between;
-      gap:20px;
-      flex-wrap:wrap;
-      color:var(--muted);
-      font-size:11px;
-      line-height:1.8;
+    .guide-trigger-btn {
+      font-size: 11.5px;
+      color: var(--accent);
+      background: transparent;
+      border: 1px dashed rgba(125, 211, 252, 0.4);
+      padding: 6px 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: .15s ease;
     }
 
-    .footer strong{
-      color:#94a3b8;
-      font-weight:500;
+    .guide-trigger-btn:hover {
+      background: rgba(125, 211, 252, 0.08);
+      border-color: var(--accent);
     }
 
-    .toast{
-      position:fixed;
-      left:50%;
-      bottom:24px;
-      transform:translate(-50%,10px);
-      padding:9px 12px;
-      border:1px solid var(--accent2);
-      background:#071018;
-      color:var(--accent2);
-      font-size:11px;
-      opacity:0;
-      pointer-events:none;
-      transition:.15s ease;
+    .quick-hint {
+      margin-top: 12px;
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    .toast.show{
-      opacity:1;
-      transform:translate(-50%,0);
+    .quick-hint code {
+      color: var(--accent2);
+      background: #060b13;
+      padding: 1px 5px;
+      border: 1px solid rgba(167, 243, 208, 0.2);
     }
 
-    @media (max-width:720px){
-      .wrap{padding-top:28px}
-      .topline{font-size:10px}
-      .steps{grid-template-columns:1fr}
-      .step{border-right:0;border-bottom:1px solid var(--line)}
-      .step:last-child{border-bottom:0}
-      .download-grid{grid-template-columns:1fr}
-      .ascii-logo{font-size:10px}
-      .command-text{font-size:11px}
+    /* 弹窗系统 (Modal) */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 9, 17, 0.82);
+      backdrop-filter: blur(6px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease;
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-dialog {
+      width: 100%;
+      max-width: 820px;
+      max-height: 88vh;
+      background: #0d1527;
+      border: 1px solid var(--accent);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(125, 211, 252, 0.1);
+      display: flex;
+      flex-direction: column;
+      transform: translateY(12px) scale(0.98);
+      transition: transform .2s ease;
+    }
+
+    .modal-overlay.open .modal-dialog {
+      transform: translateY(0) scale(1);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 18px;
+      background: #070d18;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .modal-title {
+      font-size: 12px;
+      color: var(--accent);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-close-btn {
+      color: var(--muted);
+      background: transparent;
+      border: 0;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 4px 8px;
+      transition: .15s ease;
+    }
+
+    .modal-close-btn:hover {
+      color: #f87171;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      font-size: 12px;
+    }
+
+    /* 弹窗内部 Tab */
+    .modal-tabs {
+      display: flex;
+      gap: 2px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 18px;
+    }
+
+    .modal-tab-btn {
+      padding: 8px 14px;
+      font-size: 11.5px;
+      color: var(--muted);
+      background: #080f1d;
+      border: 1px solid var(--line);
+      border-bottom: 0;
+      cursor: pointer;
+      transition: .15s ease;
+      margin-bottom: -1px;
+    }
+
+    .modal-tab-btn.active {
+      color: var(--accent2);
+      background: #0d1527;
+      border-bottom: 1px solid #0d1527;
+      font-weight: 600;
+    }
+
+    .modal-panel {
+      display: none;
+    }
+
+    .modal-panel.active {
+      display: block;
+    }
+
+    /* 步骤引导卡片 */
+    .steps-grid {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .step-card {
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      background: #080f1d;
+      color: #94a3b8;
+      font-size: 11px;
+      line-height: 1.7;
+    }
+
+    .step-card b {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--text-bright);
+      font-size: 11.5px;
+    }
+
+    .step-card b::before {
+      content: "> ";
+      color: var(--accent2);
+    }
+
+    .step-card code {
+      color: var(--accent);
+      background: #050a12;
+      padding: 1px 4px;
+      font-size: 10.5px;
+    }
+
+    /* 贴士与排错 */
+    .callout {
+      margin-top: 16px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--accent3);
+      background: #080f1d;
+      font-size: 11px;
+      color: #94a3b8;
+      line-height: 1.75;
+    }
+
+    .callout-title {
+      color: var(--accent3);
+      font-weight: 600;
+      margin-bottom: 4px;
+      font-size: 11.5px;
+    }
+
+    .callout code {
+      color: var(--accent);
+      background: #050a12;
+      padding: 1px 4px;
+    }
+
+    /* 底部全部下载矩阵 */
+    .downloads {
+      margin-top: 44px;
+    }
+
+    .download-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      border-top: 1px solid var(--line);
+      border-left: 1px solid var(--line);
+    }
+
+    .download {
+      position: relative;
+      min-height: 108px;
+      padding: 18px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: #0b1220;
+      transition: .15s ease;
+      display: block;
+    }
+
+    .download:hover {
+      background: #0f192c;
+      border-color: var(--accent);
+    }
+
+    .download.recommended::before {
+      content: "[当前系统]";
+      position: absolute;
+      right: 14px;
+      top: 14px;
+      color: var(--accent2);
+      font-size: 10px;
+      border: 1px solid rgba(167, 243, 208, 0.3);
+      padding: 1px 5px;
+      background: rgba(167, 243, 208, 0.08);
+    }
+
+    .platform {
+      color: #e2e8f0;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .platform::before { content: "[ "; color: var(--muted); }
+    .platform::after { content: " ]"; color: var(--muted); }
+
+    .meta {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .download-action {
+      margin-top: 14px;
+      color: var(--accent);
+      font-size: 11px;
+    }
+
+    .download-action::before {
+      content: "-> ";
+      color: var(--accent2);
+    }
+
+    /* 运行参数表 */
+    .runtime-section {
+      margin-top: 40px;
+    }
+
+    .params-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+      font-size: 11.5px;
+      background: var(--panel);
+    }
+
+    .params-table th, .params-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+    }
+
+    .params-table th {
+      color: var(--accent);
+      background: #080e1a;
+      font-weight: 600;
+      font-size: 11px;
+    }
+
+    .params-table tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .params-table code {
+      color: var(--accent2);
+      font-weight: 600;
+    }
+
+    /* 底部信息 */
+    .footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px dashed var(--line);
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.8;
+    }
+
+    .footer strong {
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translate(-50%, 10px);
+      padding: 8px 14px;
+      border: 1px solid var(--accent2);
+      background: #071018;
+      color: var(--accent2);
+      font-size: 11px;
+      opacity: 0;
+      pointer-events: none;
+      transition: .15s ease;
+      z-index: 2000;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    @media (max-width: 768px) {
+      .wrap { padding-top: 20px; }
+      .ascii-banner { font-size: clamp(6px, 2.1vw, 10px); }
+      .steps-grid { grid-template-columns: 1fr; }
+      .download-grid { grid-template-columns: 1fr; }
+      .os-tab-btn { padding: 8px 10px; font-size: 11px; }
+      .os-panel { padding: 14px; }
+      .panel-quick-actions { flex-direction: column; align-items: stretch; }
+      .action-chips { justify-content: flex-start; }
+      .topline { font-size: 10px; }
     }
   </style>
 </head>
@@ -301,45 +655,124 @@
     </div>
 
     <section class="hero">
-<pre class="ascii-logo">+--------------------------------------------------+
-|              J I R A   W O R K B E N C H         |
-+--------------------------------------------------+</pre>
+      <h1 class="sr-only">Jira Workbench</h1>
+      <!-- 字符样式 ASCII Logo -->
+<pre class="ascii-banner">
+     _ ___ ____      _     __        _____  ____  _  ______  _____ _   _  ____ _   _
+    | |_ _|  _ \    / \    \ \      / / _ \|  _ \| |/ / __ )| ____| \ | |/ ___| | | |
+ _  | || || |_) |  / _ \    \ \ /\ / / | | | |_) | ' /|  _ \|  _| |  \| | |   | |_| |
+| |_| || ||  _ <  / ___ \    \ V  V /| |_| |  _ <| . \| |_) | |___| |\  | |___|  _  |
+ \___/|___|_| \_\/_/   \_\    \_/\_/  \___/|_| \_\_|\_\____/|_____|_| \_|\____|_| |_|
+</pre>
 
-      <h1>Jira Workbench</h1>
       <div class="subtitle">
-        专为 Jira 打造的现代化轻量级排期与敏捷协同工作台。
-        Single Binary / Go + React 19 / Local-first.
+        专为 Jira 打造的现代化轻量级排期、需求跟踪与敏捷协同工作台。
       </div>
 
-      <div class="install">
-        <div class="section-title">[ install · macOS / Linux ]</div>
+      <div class="tags">
+        <div class="tag"><span>Arch:</span> Go 1.24 + React 19</div>
+        <div class="tag"><span>Deploy:</span> Single Binary (零外部依赖)</div>
+        <div class="tag"><span>Design:</span> Local-first & Private</div>
+        <div class="tag"><span>Default Port:</span> 8899</div>
+      </div>
+    </section>
 
-        <div class="command" id="unixInstall">
+    <!-- 上半部：精简整洁的安装区 -->
+    <section>
+      <div class="os-tabs-nav">
+        <button class="os-tab-btn active" data-tab="macos" id="tab-macos" type="button">
+          macOS <span class="os-badge" id="badge-macos" style="display:none">当前系统</span>
+        </button>
+        <button class="os-tab-btn" data-tab="windows" id="tab-windows" type="button">
+          Windows <span class="os-badge" id="badge-windows" style="display:none">当前系统</span>
+        </button>
+        <button class="os-tab-btn" data-tab="linux" id="tab-linux" type="button">
+          Linux <span class="os-badge" id="badge-linux" style="display:none">当前系统</span>
+        </button>
+      </div>
+
+      <!-- macOS 快速面板 -->
+      <div class="os-panel active" id="panel-macos">
+        <div class="command">
           <div class="command-prefix">$</div>
-          <div class="command-text" id="installCommand">curl -fsSL https://nextx.uk/jira-work/install.sh | bash</div>
-          <button class="copy" id="copyInstall" type="button" aria-label="复制安装命令">copy</button>
+          <div class="command-text" id="cmd-mac">curl -fsSL https://nextx.uk/jira-work/install.sh | bash</div>
+          <button class="copy" onclick="copyCmd('cmd-mac')" type="button">copy</button>
         </div>
 
-        <p id="installHint">上方命令仅支持 macOS / Linux。Windows 请下载下方 Windows 包，解压后运行 <code>jira.exe -open</code>。</p>
-        <div class="steps">
-          <div class="step">
-            <b>1. install</b>
-            macOS/Linux 执行上方命令；Windows 下载并解压
+        <div class="quick-hint">
+          <span>⚡ 终端一键安装至 <code>~/.local/bin/jira</code>，运行 <code>jira -open</code> 即可启动。</span>
+        </div>
+
+        <div class="panel-quick-actions">
+          <div class="action-chips">
+            <a class="chip-btn" href="releases/__VERSION__/jira-darwin-arm64.tar.gz" title="Apple Silicon M1/M2/M3/M4">
+              ↓ 下载 Apple Silicon 包
+            </a>
+            <a class="chip-btn" href="releases/__VERSION__/jira-darwin-amd64.tar.gz" title="Intel 芯片">
+              ↓ 下载 Intel 包
+            </a>
           </div>
-          <div class="step">
-            <b>2. run</b>
-            <code>jira -open</code> / Windows: <code>.\jira.exe -open</code>
+          <button class="guide-trigger-btn" onclick="openGuideModal('macos')" type="button">
+            📖 查看手动安装与排错引导 →
+          </button>
+        </div>
+      </div>
+
+      <!-- Windows 快速面板 -->
+      <div class="os-panel" id="panel-windows">
+        <div class="command">
+          <div class="command-prefix">PS></div>
+          <div class="command-text" id="cmd-win">curl.exe -fL "https://nextx.uk/jira-work/releases/__VERSION__/jira-windows-amd64.tar.gz" -o jira.tar.gz; tar -xzf jira.tar.gz; .\jira.exe -open</div>
+          <button class="copy" onclick="copyCmd('cmd-win')" type="button">copy</button>
+        </div>
+
+        <div class="quick-hint">
+          <span>⚡ 解压后直接双击 <code>jira.exe</code> 或在终端运行 <code>.\jira.exe -open</code>。</span>
+        </div>
+
+        <div class="panel-quick-actions">
+          <div class="action-chips">
+            <a class="chip-btn primary" href="releases/__VERSION__/jira-windows-amd64.tar.gz">
+              ↓ 下载 Windows 64位 安装包 (.tar.gz)
+            </a>
           </div>
-          <div class="step">
-            <b>3. connect</b>
-            填写 Jira 地址与 Token
+          <button class="guide-trigger-btn" onclick="openGuideModal('windows')" type="button">
+            📖 查看手动安装与排错引导 →
+          </button>
+        </div>
+      </div>
+
+      <!-- Linux 快速面板 -->
+      <div class="os-panel" id="panel-linux">
+        <div class="command">
+          <div class="command-prefix">$</div>
+          <div class="command-text" id="cmd-linux">curl -fsSL https://nextx.uk/jira-work/install.sh | bash</div>
+          <button class="copy" onclick="copyCmd('cmd-linux')" type="button">copy</button>
+        </div>
+
+        <div class="quick-hint">
+          <span>⚡ 桌面运行 <code>jira -open</code>；服务器后台守护：<code>nohup jira -H 0.0.0.0 -p 8899 &gt; jira.log 2&gt;&amp;1 &amp;</code></span>
+        </div>
+
+        <div class="panel-quick-actions">
+          <div class="action-chips">
+            <a class="chip-btn" href="releases/__VERSION__/jira-linux-amd64.tar.gz">
+              ↓ 下载 Linux (amd64) 包
+            </a>
           </div>
+          <button class="guide-trigger-btn" onclick="openGuideModal('linux')" type="button">
+            📖 查看手动安装与 Systemd 部署引导 →
+          </button>
         </div>
       </div>
     </section>
 
-    <section class="downloads">
-      <div class="section-title">[ manual download ]</div>
+    <!-- 全部平台发布包下载矩阵 -->
+    <section class="downloads" id="all-downloads">
+      <div class="section-title">
+        <span>[ 全部平台发布包下载 / All Releases ]</span>
+        <a href="#runtime-section" style="color:var(--muted);font-size:11px">查看 CLI 参数 ↓</a>
+      </div>
 
       <div class="download-grid" id="downloadGrid">
         <a class="download" data-platform="mac-arm64" href="releases/__VERSION__/jira-darwin-arm64.tar.gz">
@@ -368,28 +801,224 @@
       </div>
     </section>
 
+    <!-- 运行参数速查 -->
+    <section class="runtime-section" id="runtime-section">
+      <div class="section-title">[ 常用命令行参数 / CLI Flags ]</div>
+      <table class="params-table">
+        <thead>
+          <tr>
+            <th style="width:28%">参数选项</th>
+            <th style="width:24%">默认值</th>
+            <th>说明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>-open</code></td>
+            <td><code>false</code></td>
+            <td>后台启动 Web 服务，打印日志位置并在默认浏览器中打开工作台页面</td>
+          </tr>
+          <tr>
+            <td><code>-p</code>, <code>-port</code></td>
+            <td><code>8899</code></td>
+            <td>HTTP 服务监听端口（例如 <code>jira -p 9000</code>）</td>
+          </tr>
+          <tr>
+            <td><code>-H</code>, <code>-host</code></td>
+            <td><code>0.0.0.0</code></td>
+            <td>HTTP 服务监听地址（<code>0.0.0.0</code> 支持局域网/外网访问，<code>127.0.0.1</code> 仅本地）</td>
+          </tr>
+          <tr>
+            <td><code>-v</code>, <code>-version</code></td>
+            <td>-</td>
+            <td>打印当前程序版本号并退出</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
     <div class="footer">
       <div>
         <strong>[ runtime ]</strong><br>
         ./jira -open<br>
-        ./jira -H 0.0.0.0
+        ./jira -H 0.0.0.0 -p 8899
       </div>
       <div>
-        <strong>[ spec ]</strong><br>
-        single binary<br>
-        ~20-30MB memory
+        <strong>[ specs ]</strong><br>
+        single binary distribution<br>
+        ~20-30MB memory footprint
+      </div>
+      <div>
+        <strong>[ connectivity ]</strong><br>
+        Local Jira cache + direct API<br>
+        Data stored on local machine
       </div>
     </div>
   </main>
 
-  <div class="toast" id="toast">[ copied ]</div>
+  <!-- 安装与排错引导弹窗 (Modal) -->
+  <div class="modal-overlay" id="guideModal" onclick="handleModalBackdropClick(event)">
+    <div class="modal-dialog" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>● ● ●</span>
+          <span>[ 安装使用与排错引导 / Installation Guide ]</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeGuideModal()" type="button" title="关闭 (ESC)">✕ 关闭</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-tabs">
+          <button class="modal-tab-btn active" data-modaltab="macos" onclick="switchModalTab('macos')" type="button">macOS 指引</button>
+          <button class="modal-tab-btn" data-modaltab="windows" onclick="switchModalTab('windows')" type="button">Windows 指引</button>
+          <button class="modal-tab-btn" data-modaltab="linux" onclick="switchModalTab('linux')" type="button">Linux 指引</button>
+        </div>
+
+        <!-- 弹窗 macOS 内容 -->
+        <div class="modal-panel active" id="modal-panel-macos">
+          <div class="steps-grid">
+            <div class="step-card">
+              <b>1. 下载与解压</b>
+              解压下载包至任意目录：<br>
+              <code>tar -xzf jira-darwin-arm64.tar.gz</code><br>
+              赋予权限：<code>chmod +x jira</code>
+            </div>
+            <div class="step-card">
+              <b>2. 启动工作台</b>
+              终端执行：<br>
+              <code>./jira -open</code><br>
+              自动打开 <code>http://127.0.0.1:8899</code>
+            </div>
+            <div class="step-card">
+              <b>3. 系统全局命令</b>
+              可选移动至环境变量目录：<br>
+              <code>mkdir -p ~/.local/bin &amp;&amp; mv jira ~/.local/bin/</code>
+            </div>
+          </div>
+
+          <div class="callout">
+            <div class="callout-title">💡 macOS 常见问题处理：</div>
+            • <strong>环境变量提示</strong>：一键安装默认放置在 <code>~/.local/bin</code>，若提示 <code>command not found: jira</code>，可在 <code>~/.zshrc</code> 中加入 <code>export PATH="$HOME/.local/bin:$PATH"</code> 并重开终端。<br>
+            • <strong>安全拦截</strong>：手动解压若提示“无法打开因为无法验证开发者”，在终端执行 <code>xattr -d com.apple.quarantine jira</code> 即可解除限制。
+          </div>
+        </div>
+
+        <!-- 弹窗 Windows 内容 -->
+        <div class="modal-panel" id="modal-panel-windows">
+          <div class="steps-grid">
+            <div class="step-card">
+              <b>1. 下载与解压</b>
+              解压 <code>jira-windows-amd64.tar.gz</code> 得到 <code>jira.exe</code> 绿色程序。
+            </div>
+            <div class="step-card">
+              <b>2. 直接双击启动</b>
+              直接双击 <code>jira.exe</code> 启动前台服务，再访问 <code>http://localhost:8899</code>；自动打开浏览器请使用下方命令。
+            </div>
+            <div class="step-card">
+              <b>3. 终端命令行运行</b>
+              PowerShell 中可执行：<br>
+              <code>.\jira.exe -open</code>
+            </div>
+          </div>
+
+          <div class="callout">
+            <div class="callout-title">💡 Windows 常见问题处理：</div>
+            • <strong>SmartScreen 提示</strong>：首次双击若弹出 Windows Defender 保护提示，点击「更多信息」并选择「仍要运行」。<br>
+            • <strong>防火墙权限</strong>：首次运行弹出防火墙通信请求时，勾选专用网络并允许访问。
+          </div>
+        </div>
+
+        <!-- 弹窗 Linux 内容 -->
+        <div class="modal-panel" id="modal-panel-linux">
+          <div class="steps-grid">
+            <div class="step-card">
+              <b>1. 本地解压</b>
+              <code>tar -xzf jira-linux-amd64.tar.gz</code><br>
+              <code>chmod +x jira &amp;&amp; mkdir -p ~/.local/bin &amp;&amp; mv jira ~/.local/bin/</code>
+            </div>
+            <div class="step-card">
+              <b>2. 桌面直接运行</b>
+              在图形界面终端执行：<br>
+              <code>jira -open</code>
+            </div>
+            <div class="step-card">
+              <b>3. 服务器后台部署</b>
+              <code>nohup jira -H 0.0.0.0 -p 8899 &gt; jira.log 2&gt;&amp;1 &amp;</code>
+            </div>
+          </div>
+
+          <div class="callout">
+            <div class="callout-title">💡 Linux 服务化部署 (Systemd 守护进程示例)：</div>
+            创建目录 <code>~/.config/systemd/user</code>，在其中的 <code>jira.service</code> 写入：<br>
+            <code>[Unit]<br>Description=Jira Workbench Service<br>
+            [Service]<br>ExecStart=%h/.local/bin/jira -H 0.0.0.0 -p 8899<br>
+            Restart=always<br>
+            [Install]<br>WantedBy=default.target</code><br>
+            执行 <code>systemctl --user daemon-reload &amp;&amp; systemctl --user enable --now jira</code>，随用户登录自动启动（不保证退出登录后继续运行）。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">[ copied to clipboard ]</div>
 
   <script>
     (function(){
-      const command = "curl -fsSL https://nextx.uk/jira-work/install.sh | bash";
-      const cards = Array.from(document.querySelectorAll(".download"));
       const toast = document.getElementById("toast");
+      const modal = document.getElementById("guideModal");
 
+      // 页面主 Tab 切换
+      const tabBtns = document.querySelectorAll(".os-tab-btn");
+      const panels = document.querySelectorAll(".os-panel");
+
+      function switchTab(targetTab) {
+        tabBtns.forEach(btn => {
+          btn.classList.toggle("active", btn.dataset.tab === targetTab);
+        });
+        panels.forEach(panel => {
+          panel.classList.toggle("active", panel.id === "panel-" + targetTab);
+        });
+      }
+
+      tabBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          switchTab(btn.dataset.tab);
+        });
+      });
+
+      // 弹窗控制逻辑
+      window.openGuideModal = function(targetOs) {
+        if (targetOs) switchModalTab(targetOs);
+        modal.classList.add("open");
+        document.body.style.overflow = "hidden";
+      };
+
+      window.closeGuideModal = function() {
+        modal.classList.remove("open");
+        document.body.style.overflow = "";
+      };
+
+      window.handleModalBackdropClick = function(e) {
+        if (e.target === modal) closeGuideModal();
+      };
+
+      window.switchModalTab = function(targetOs) {
+        document.querySelectorAll(".modal-tab-btn").forEach(btn => {
+          btn.classList.toggle("active", btn.dataset.modaltab === targetOs);
+        });
+        document.querySelectorAll(".modal-panel").forEach(panel => {
+          panel.classList.toggle("active", panel.id === "modal-panel-" + targetOs);
+        });
+      };
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && modal.classList.contains("open")) {
+          closeGuideModal();
+        }
+      });
+
+      // 架构与操作系统识别
       function normalizeArch(v){
         const a = String(v || "").toLowerCase();
         if (a.includes("arm") || a.includes("aarch64")) return "arm64";
@@ -397,7 +1026,7 @@
         return "";
       }
 
-      async function detect(){
+      async function detectOS(){
         const ua = navigator.userAgent || "";
         const platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "";
         let arch = "";
@@ -411,47 +1040,48 @@
 
         const src = (platform + " " + ua).toLowerCase();
 
-        if (/win/.test(src)) return "windows-amd64";
-        if (/linux|x11/.test(src) && !/android/.test(src)) return "linux-amd64";
+        if (/win/.test(src)) return { os: "windows", key: "windows-amd64" };
+        if (/linux|x11/.test(src) && !/android/.test(src)) return { os: "linux", key: "linux-amd64" };
         if (/mac|macintosh|darwin/.test(src)){
-          return arch === "amd64" ? "mac-amd64" : "mac-arm64";
+          const isIntel = arch === "amd64";
+          return { os: "macos", key: isIntel ? "mac-amd64" : "mac-arm64" };
         }
-        return "";
+        return { os: "macos", key: "mac-arm64" };
       }
 
-      detect().then(key=>{
-        if (key === "windows-amd64") {
-          document.getElementById("unixInstall").hidden = true;
-          document.getElementById("unixInstall").style.display = "none";
-          document.getElementById("installHint").textContent = "Windows 不支持上方 Bash 安装方式。请下载下方 Windows 包，解压后运行 jira.exe，或在 PowerShell 中运行 .\\jira.exe -open。";
-        }
-        cards.forEach(card=>{
+      detectOS().then(({ os, key }) => {
+        switchTab(os);
+
+        // 显示当前系统徽标
+        const badge = document.getElementById("badge-" + os);
+        if (badge) badge.style.display = "inline-block";
+
+        // 高亮对应的全平台卡片
+        document.querySelectorAll(".download").forEach(card => {
           card.classList.toggle("recommended", card.dataset.platform === key);
         });
       });
 
-      async function copyText(text){
-        if (navigator.clipboard && window.isSecureContext){
-          await navigator.clipboard.writeText(text);
-          return;
-        }
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        ta.remove();
-      }
-
-      document.getElementById("copyInstall").addEventListener("click", async ()=>{
-        try{
-          await copyText(command);
+      // 剪贴板复制工具
+      window.copyCmd = async function(elementId) {
+        const text = document.getElementById(elementId).innerText;
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+          } else {
+            const ta = document.createElement("textarea");
+            ta.value = text;
+            ta.style.position = "fixed";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand("copy");
+            ta.remove();
+          }
           toast.classList.add("show");
-          setTimeout(()=>toast.classList.remove("show"),1400);
-        }catch(_){}
-      });
+          setTimeout(() => toast.classList.remove("show"), 1400);
+        } catch(_) {}
+      };
     })();
   </script>
 </body>

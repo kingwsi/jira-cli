@@ -70,7 +70,11 @@ func OpenURLInBrowser(url string) {
 	default: // linux, bsd, etc.
 		cmd = exec.Command("xdg-open", url)
 	}
-	_ = cmd.Start()
+	go func() {
+		if err := cmd.Run(); err != nil {
+			fmt.Printf("无法自动打开浏览器，请手动访问 %s: %v\n", url, err)
+		}
+	}()
 }
 
 func Run(cfg Config) error {
@@ -78,40 +82,14 @@ func Run(cfg Config) error {
 	if cfg.Host == "0.0.0.0" || cfg.Host == "" {
 		addr = fmt.Sprintf(":%d", cfg.Port)
 	} else {
-		addr = fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
+		addr = net.JoinHostPort(cfg.Host, fmt.Sprint(cfg.Port))
 	}
 
-	localURL := fmt.Sprintf("http://localhost:%d", cfg.Port)
-
-	fmt.Println("======================================================")
-	fmt.Println("         🚀 Jira Workbench - Web 服务已启动")
-	if cfg.Version != "" {
-		fmt.Printf("         版本: %s\n", cfg.Version)
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return fmt.Errorf("无法监听 %s: %w", addr, err)
 	}
-	fmt.Println("======================================================")
-	fmt.Printf("  • 本地访问:    %s\n", localURL)
-
-	lanIPs := GetLocalIPs()
-	if len(lanIPs) > 0 {
-		for _, ip := range lanIPs {
-			fmt.Printf("  • 局域网访问:  http://%s:%d\n", ip, cfg.Port)
-		}
-	} else if cfg.Host == "0.0.0.0" || cfg.Host == "" {
-		fmt.Printf("  • 局域网访问:  http://<LAN-IP>:%d\n", cfg.Port)
-	}
-
-	fmt.Printf("  • 监听绑定:    %s\n", addr)
-	fmt.Println("------------------------------------------------------")
-	fmt.Println("  按 Ctrl + C 即可停止服务")
-	fmt.Println("======================================================")
-	fmt.Println()
-
-	if cfg.OpenBrowser {
-		go func() {
-			time.Sleep(200 * time.Millisecond)
-			OpenURLInBrowser(localURL)
-		}()
-	}
+	defer listener.Close()
 
 	serviceCtx, cancelService := context.WithCancel(context.Background())
 	defer cancelService()
@@ -121,7 +99,6 @@ func Run(cfg Config) error {
 	reminderService.Start(serviceCtx)
 	restart := make(chan struct{}, 1)
 	updateService := updater.New(cfg.Version, func() { restart <- struct{}{} })
-	updateService.Start(serviceCtx)
 	router := api.NewRouter(reminderService, updateService)
 	httpServer := &http.Server{
 		Addr:         addr,
@@ -134,13 +111,55 @@ func Run(cfg Config) error {
 	// 捕获系统退出信号实现优雅停机
 	serverErrChan := make(chan error, 1)
 	go func() {
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := httpServer.Serve(listener); err != nil && err != http.ErrServerClosed {
 			serverErrChan <- err
 		}
 	}()
 
+	localHost := cfg.Host
+	if localHost == "" || localHost == "0.0.0.0" || localHost == "::" {
+		localHost = "localhost"
+	}
+	localURL := "http://" + net.JoinHostPort(localHost, fmt.Sprint(listener.Addr().(*net.TCPAddr).Port))
+
+	fmt.Println("======================================================")
+	fmt.Println("         🚀 Jira Workbench - Web 服务已启动")
+	if cfg.Version != "" {
+		fmt.Printf("         版本: %s\n", cfg.Version)
+	}
+	fmt.Println("======================================================")
+	fmt.Printf("  • 本地访问:    %s\n", localURL)
+
+	lanIPs := GetLocalIPs()
+	if (cfg.Host == "0.0.0.0" || cfg.Host == "" || cfg.Host == "::") && len(lanIPs) > 0 {
+		for _, ip := range lanIPs {
+			fmt.Printf("  • 局域网访问:  http://%s:%d\n", ip, cfg.Port)
+		}
+	} else if cfg.Host == "0.0.0.0" || cfg.Host == "" {
+		fmt.Printf("  • 局域网访问:  http://<LAN-IP>:%d\n", cfg.Port)
+	}
+
+	fmt.Printf("  • 监听绑定:    %s\n", addr)
+	fmt.Println("------------------------------------------------------")
+	if os.Getenv(childEnv) != "1" {
+		fmt.Println("  按 Ctrl + C 即可停止服务")
+	}
+	fmt.Println("======================================================")
+	fmt.Println()
+
+	updateService.CheckAndNotify(serviceCtx, os.Stdout)
+	if err := notifyReady(); err != nil {
+		_ = httpServer.Close()
+		return fmt.Errorf("通知启动结果失败: %w", err)
+	}
+	updateService.Start(serviceCtx)
+	if cfg.OpenBrowser {
+		OpenURLInBrowser(localURL)
+	}
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(quit)
 
 	select {
 	case err := <-serverErrChan:

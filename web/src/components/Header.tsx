@@ -10,22 +10,23 @@ import {
 } from 'lucide-react'
 import { api } from '../api/client'
 
-export const Header: React.FC = () => {
+export const Header: React.FC<{ configured: boolean }> = ({ configured }) => {
   const [currentUser, setCurrentUser] = useState<any>(null)
 
   useEffect(() => {
+    if (!configured) return
     api.getCurrentUser().then(setCurrentUser).catch(() => {})
-  }, [])
+  }, [configured])
 
   return (
     <header data-ui="top-nav">
       {/* 左侧：品牌标题与主导航菜单 */}
       <div data-ui="top-nav-left">
-        <NavLink to="/tasks" data-ui="top-nav-brand">
+        <NavLink to={configured ? '/tasks' : '/settings'} data-ui="top-nav-brand">
           <span data-ui="top-nav-title">Jira Workbench</span>
         </NavLink>
 
-        <nav data-ui="top-nav-links" aria-label="主导航">
+        {configured && <nav data-ui="top-nav-links" aria-label="主导航">
           <NavLink
             to="/tasks"
             data-ui="top-nav-item"
@@ -62,7 +63,7 @@ export const Header: React.FC = () => {
             <span>工时填报</span>
           </NavLink>
 
-        </nav>
+        </nav>}
       </div>
 
       {/* 右侧：连接用户与系统设置 */}
@@ -79,7 +80,7 @@ export const Header: React.FC = () => {
           }}
         >
           <User size={14} style={{ opacity: 0.8 }} />
-          <span>{currentUser?.displayName || currentUser?.name || '已连接'}</span>
+          <span>{configured ? (currentUser?.displayName || currentUser?.name || '已配置') : '请先配置 Jira'}</span>
         </div>
 
         <NavLink

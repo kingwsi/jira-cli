@@ -125,6 +125,9 @@ func (s *Service) fetch(ctx context.Context, url string, limit int64) ([]byte, e
 	if err != nil {
 		return nil, err
 	}
+	if url == source {
+		req.Header.Set("Cache-Control", "no-cache")
+	}
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return nil, err
@@ -170,12 +173,34 @@ func (s *Service) Check(ctx context.Context) error {
 	_, err := s.check(ctx)
 	return err
 }
+
+// CheckAndNotify bounds metadata checks without reducing the download timeout.
+func (s *Service) CheckAndNotify(ctx context.Context, out io.Writer) {
+	if !valid(s.Status().Current) {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	if err := s.Check(ctx); err != nil {
+		fmt.Fprintf(out, "检查更新失败（不影响服务运行）：%v\n", err)
+		return
+	}
+	st := s.Status()
+	if st.Available {
+		fmt.Fprintf(out, "发现新版本 %s（当前 %s），请前往工作台设置 → 版本与更新，或访问 https://nextx.uk/jira-work/ 更新。\n", st.Latest, st.Current)
+	}
+}
+
 func (s *Service) Start(ctx context.Context) {
 	go func() {
 		tick := time.NewTicker(6 * time.Hour)
 		defer tick.Stop()
+		first := true
 		for {
-			_ = s.Check(ctx)
+			if !first || s.Status().CheckedAt == "" {
+				s.CheckAndNotify(ctx, os.Stdout)
+			}
+			first = false
 			if s.Status().Auto && s.Status().Available {
 				_ = s.Install(ctx)
 			}

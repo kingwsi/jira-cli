@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/ws/jira-cli/internal/auth"
@@ -24,7 +25,8 @@ func NewConfigHandler(cache *memoryCache) *ConfigHandler {
 
 func (h *ConfigHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
 	cfg, _ := auth.LoadConfig()
-	isConfigured := cfg != nil && cfg.URL != ""
+	isConfigured := cfg != nil && strings.TrimSpace(cfg.URL) != "" &&
+		strings.TrimSpace(cfg.Username) != "" && cfg.Password != ""
 
 	resp := models.ServerConfig{
 		IsConfigured:         isConfigured,
@@ -33,7 +35,7 @@ func (h *ConfigHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
 		DefaultProject:       "DSYFB",
 	}
 
-	if isConfigured {
+	if cfg != nil {
 		resp.URL = cfg.URL
 		resp.Username = cfg.Username
 	}

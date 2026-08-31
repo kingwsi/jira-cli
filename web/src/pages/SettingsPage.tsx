@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Server,
   Database,
@@ -26,7 +27,11 @@ import { UpdateSettings } from '../components/UpdateSettings'
 
 type SettingsTab = 'jira' | 'reminders' | 'fields' | 'updates'
 
-export const SettingsPage: React.FC = () => {
+export const SettingsPage: React.FC<{
+  setupRequired: boolean
+  onConfigured: (config: ServerConfig) => void
+}> = ({ setupRequired, onConfigured }) => {
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<SettingsTab>('jira')
   const [config, setConfig] = useState<ServerConfig | null>(null)
   const [url, setUrl] = useState('')
@@ -55,16 +60,18 @@ export const SettingsPage: React.FC = () => {
   }, [])
 
   useEffect(() => {
+    if (setupRequired) return
     api.getReminderConfig().then(setReminderConfig).catch((err) => {
       console.error('加载提醒配置失败:', err)
     })
-  }, [])
+  }, [setupRequired])
 
   useEffect(() => {
+    if (setupRequired) return
     api.getFields().then(setFields).catch((err) => {
       console.error('加载字段列表失败:', err)
     })
-  }, [])
+  }, [setupRequired])
 
   const handleTestConnection = async () => {
     setTesting(true)
@@ -90,10 +97,15 @@ export const SettingsPage: React.FC = () => {
     setTesting(true)
     try {
       await api.saveConfig({ url, username, password: password || undefined })
-      alert('配置已成功保存！')
       setPassword('')
       const updated = await api.getConfig()
       setConfig(updated)
+      onConfigured(updated)
+      if (setupRequired && updated.isConfigured) {
+        navigate('/tasks', { replace: true })
+      } else {
+        alert('配置已成功保存！')
+      }
     } catch (err: any) {
       alert('保存失败: ' + err.message)
     } finally {
@@ -198,7 +210,7 @@ export const SettingsPage: React.FC = () => {
         {/* Top Header */}
         <div className="settings-page-header">
           <h2>系统与 Jira 接入配置</h2>
-          <p>管理 Jira 实例连接鉴权、自动化工时与任务提醒策略，以及同步字段元数据映射</p>
+          <p>{setupRequired ? '欢迎使用！请先配置 Jira 连接。保存时会验证连通性，通过后即可进入工作台。' : '管理 Jira 实例连接鉴权、自动化工时与任务提醒策略，以及同步字段元数据映射'}</p>
         </div>
 
         {/* Master-Detail Layout (Left Nav + Right Panel) */}
@@ -219,6 +231,7 @@ export const SettingsPage: React.FC = () => {
               </span>
             </button>
 
+            {!setupRequired && <>
             <button
               type="button"
               className={`settings-nav-item ${activeTab === 'reminders' ? 'active' : ''}`}
@@ -249,6 +262,7 @@ export const SettingsPage: React.FC = () => {
             <button type="button" className={`settings-nav-item ${activeTab === 'updates' ? 'active' : ''}`} onClick={() => setActiveTab('updates')}>
               <div className="settings-nav-label"><RefreshCw size={15} /><span>版本与更新</span></div>
             </button>
+            </>}
           </nav>
 
           {/* Right Content Area */}
@@ -356,7 +370,7 @@ export const SettingsPage: React.FC = () => {
                       data-variant="primary"
                       disabled={testing || !url || !username}
                     >
-                      保存配置
+                      {setupRequired ? '验证并进入工作台' : '保存配置'}
                     </button>
                   </div>
                 </form>

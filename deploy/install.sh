@@ -22,17 +22,20 @@ __CHECKSUM_CASES__
 esac
 work=$(mktemp -d)
 trap 'rm -rf -- "$work"' EXIT
-printf '正在下载 Jira Workbench %s (%s/%s)...\n' "$VERSION" "$OS" "$ARCH"
-curl -fsSL "${BASE_URL}/${TAR_FILE}" -o "$work/package.tar.gz"
+printf '[1/4] 正在下载 Jira Workbench %s (%s/%s)...\n' "$VERSION" "$OS" "$ARCH"
+curl -fL --progress-bar "${BASE_URL}/${TAR_FILE}" -o "$work/package.tar.gz"
+printf '[2/4] 正在校验 SHA-256...\n'
 if command -v sha256sum >/dev/null; then
   actual=$(sha256sum "$work/package.tar.gz")
 else
   actual=$(shasum -a 256 "$work/package.tar.gz")
 fi
 [[ "${actual%% *}" == "$expected" ]] || { echo '下载包校验失败，未安装。' >&2; exit 1; }
+printf '[3/4] 正在解压安装包...\n'
 tar -xzf "$work/package.tar.gz" -C "$work" jira
 [[ -f "$work/jira" && ! -L "$work/jira" ]] || { echo '发布包缺少有效的 jira 程序' >&2; exit 1; }
 install_dir="${HOME:?未设置 HOME，无法确定用户安装目录}/.local/bin"
+printf '[4/4] 正在安装到 %s...\n' "$install_dir"
 mkdir -p "$install_dir"
 install -m 0755 "$work/jira" "$install_dir/jira"
 printf '安装成功：%s，位置：%s/jira。\n' "$VERSION" "$install_dir"

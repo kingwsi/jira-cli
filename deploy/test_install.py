@@ -28,7 +28,7 @@ class InstallTest(unittest.TestCase):
             path.write_text(script)
             commands = {
                 'uname': 'if [ "$1" = "-s" ]; then printf "%s\\n" "$MOCK_OS"; else echo x86_64; fi',
-                'curl': 'printf "%s\\n" "$2" > "$TRACE_URL"; cp "$FIXTURE_PACKAGE" "$4"',
+                'curl': 'printf "%s\\n" "$3" > "$TRACE_URL"; cp "$FIXTURE_PACKAGE" "$5"',
                 'sudo': 'echo "Unexpected sudo invocation" >&2; exit 1',
             }
             for name, body in commands.items():
