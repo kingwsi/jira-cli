@@ -140,3 +140,7 @@ Gitea 流水线使用 `node:20-bookworm` job 容器，并显式挂载 `/var/www/
 流水线会在构建前验证挂载点和写权限；发布时通过 `deploy/publish-local.sh` 暂存产物，校验 SHA-256，保留历史版本，最后原子更新 `latest/version.json`。没有正确挂载、目录不可写或校验失败都会终止任务，不会继续报告发布成功。不需要 SSH Secrets，也不需要重启 Nginx。`cp -a dist/. /var/www/jira-work/` 可以写入共享目录，但流水线使用分阶段发布，以免更新客户端读到尚未上传完成的版本包。
 
 GitHub 的托管 Runner 不使用这台服务器的目录映射，因此 `.github/workflows/release.yaml` 保持 SSH 发布方式。若启用该流水线，需配置 `SSH_HOST`、`SSH_USER`、`SSH_KEY`、`SSH_KNOWN_HOSTS`（预先核验的服务器公钥）和可选 `SSH_PORT`（默认 22）；远端需具备 Python 3，并允许该账号写入发布目录。两条流水线共用 `deploy/publish.py` 的发布校验及锁，避免同时覆盖发布文件。不要同时为同一版本标签发布内容不同的构建包。
+
+一键安装命令 `curl -fsSL https://nextx.uk/jira-work/install.sh | bash` 仅面向已提供安装包的 macOS arm64/amd64 和 Linux amd64。脚本会下载其内嵌版本对应的 `/releases/vX.Y.Z/` 包并校验 SHA-256；Windows 请手动下载 Windows 包，解压后运行 `jira.exe`，或在 PowerShell 中运行 `.\jira.exe -open`。Git Bash 不会被当作 Linux 安装，WSL 安装的是 Linux 程序。
+
+使用 Cloudflare 缓存时，请对 `/jira-work/install.sh`、`/jira-work/latest/version.json` 和落地页绕过缓存或设置合适的短缓存，并清除已有缓存；`/jira-work/releases/*` 可长期缓存。固定入口脚本如果仍被缓存，仍可能安装其内嵌的旧版本。

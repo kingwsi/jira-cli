@@ -111,25 +111,14 @@ jobs:
           PYTHON
 
           # 4. 生成一键安装脚本 install.sh
-          cat << 'EOF' > dist/install.sh
-          #!/bin/bash
-          set -e
-          BASE_URL="https://nextx.uk/jira-work/latest"
-          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-          ARCH=$(uname -m)
-
-          if [ "$ARCH" = "x86_64" ]; then ARCH="amd64"; fi
-          if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then ARCH="arm64"; fi
-
-          TAR_FILE="jira-${OS}-${ARCH}.tar.gz"
-          echo "🚀 正在下载 Jira Workbench (${OS}/${ARCH})..."
-          curl -fsSL "${BASE_URL}/${TAR_FILE}" -o /tmp/${TAR_FILE}
-
-          tar -xzf /tmp/${TAR_FILE} -C /tmp
-          sudo mv /tmp/jira /usr/local/bin/jira
-          rm /tmp/${TAR_FILE}
-          echo "✅ 安装成功！在终端输入 'jira -open' 即可启动工作台。"
-          EOF
+          python3 - <<'PYTHON'
+          import json, pathlib
+          metadata = json.loads(pathlib.Path('dist/latest/version.json').read_text())
+          cases = '\n'.join(f'  {name}) expected="{digest}" ;;' for name, digest in metadata['checksums'].items())
+          script = pathlib.Path('deploy/install.sh').read_text()
+          script = script.replace('__VERSION__', metadata['version']).replace('__CHECKSUM_CASES__', cases)
+          pathlib.Path('dist/install.sh').write_text(script)
+          PYTHON
           chmod +x dist/install.sh
 
           # 5. 组装下载落地页 index.html (注入版本号和时间)

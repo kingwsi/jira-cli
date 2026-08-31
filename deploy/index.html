@@ -3,201 +3,456 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Jira Workbench - 任务与团队排期工作台</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
-            mono: ['"JetBrains Mono"', 'monospace'],
-          },
-          colors: {
-            brand: {
-              50: '#f0f9ff',
-              400: '#38bdf8',
-              500: '#0ea5e9',
-              600: '#0284c7',
-            }
-          }
-        }
-      }
-    }
-  </script>
+  <meta name="theme-color" content="#0b0f19" />
+  <meta name="description" content="Jira Workbench — 专为 Jira 打造的现代化轻量级排期与敏捷协同工作台。" />
+  <title>Jira Workbench</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <style>
-    .glow-effect {
-      background: radial-gradient(circle at 50% 0%, rgba(14, 165, 233, 0.15), transparent 70%);
+    :root{
+      --bg:#0b0f19;
+      --panel:#0f172a;
+      --text:#dbeafe;
+      --muted:#64748b;
+      --line:#334155;
+      --accent:#7dd3fc;
+      --accent2:#a7f3d0;
+      --warn:#fde68a;
+      --max:980px;
+    }
+
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      background:var(--bg);
+      font-family:"JetBrains Mono","SFMono-Regular",Consolas,monospace;
+      letter-spacing:-0.01em;
+    }
+
+    body::before{
+      content:"";
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px);
+      background-size:100% 28px;
+      mask-image:linear-gradient(to bottom,black,transparent 90%);
+    }
+
+    a{color:inherit;text-decoration:none}
+    button{font:inherit}
+
+    .wrap{
+      width:min(calc(100% - 28px),var(--max));
+      margin:0 auto;
+      padding:44px 0 56px;
+    }
+
+    .topline{
+      display:flex;
+      justify-content:space-between;
+      gap:16px;
+      color:var(--muted);
+      font-size:12px;
+      margin-bottom:28px;
+    }
+
+    .brand{
+      color:var(--accent);
+      font-weight:700;
+    }
+
+    .hero{
+      padding:28px 0 30px;
+      border-top:1px solid var(--line);
+      border-bottom:1px solid var(--line);
+    }
+
+    .ascii-logo{
+      margin:0 0 22px;
+      color:#e2e8f0;
+      font-size:clamp(11px,2vw,16px);
+      line-height:1.25;
+      white-space:pre;
+      overflow-x:auto;
+    }
+
+    h1{
+      margin:0;
+      font-size:clamp(28px,6vw,54px);
+      line-height:1;
+      letter-spacing:-0.05em;
+      font-weight:700;
+    }
+
+    .subtitle{
+      margin-top:16px;
+      max-width:740px;
+      color:#94a3b8;
+      font-size:14px;
+      line-height:1.8;
+    }
+
+    .install{
+      margin-top:34px;
+    }
+
+    .section-title{
+      color:var(--accent);
+      font-size:12px;
+      margin-bottom:10px;
+    }
+
+    .command{
+      display:flex;
+      align-items:stretch;
+      border:1px solid var(--line);
+      background:#0a101b;
+    }
+
+    .command-prefix{
+      padding:16px 0 16px 16px;
+      color:var(--accent2);
+      user-select:none;
+    }
+
+    .command-text{
+      flex:1;
+      min-width:0;
+      padding:16px 10px;
+      overflow-x:auto;
+      white-space:nowrap;
+      color:#e2e8f0;
+      font-size:13px;
+    }
+
+    .copy{
+      width:58px;
+      border:0;
+      border-left:1px solid var(--line);
+      color:var(--muted);
+      background:transparent;
+      cursor:pointer;
+    }
+
+    .copy:hover{
+      color:var(--accent);
+      background:rgba(125,211,252,.035);
+    }
+
+    .steps{
+      margin-top:14px;
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      border:1px solid var(--line);
+      border-top:0;
+    }
+
+    .step{
+      padding:14px 16px;
+      min-height:74px;
+      border-right:1px solid var(--line);
+      color:#94a3b8;
+      font-size:12px;
+      line-height:1.7;
+    }
+
+    .step:last-child{border-right:0}
+
+    .step b{
+      display:block;
+      margin-bottom:4px;
+      color:#e2e8f0;
+      font-weight:600;
+    }
+
+    .step b::before{
+      content:"> ";
+      color:var(--accent2);
+    }
+
+    .downloads{
+      margin-top:38px;
+    }
+
+    .download-grid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      border-top:1px solid var(--line);
+      border-left:1px solid var(--line);
+    }
+
+    .download{
+      position:relative;
+      min-height:112px;
+      padding:18px;
+      border-right:1px solid var(--line);
+      border-bottom:1px solid var(--line);
+      transition:.15s ease;
+    }
+
+    .download:hover{
+      background:#0d1422;
+    }
+
+    .download.recommended::before{
+      content:"[recommended]";
+      position:absolute;
+      right:14px;
+      top:14px;
+      color:var(--accent2);
+      font-size:10px;
+    }
+
+    .platform{
+      color:#e2e8f0;
+      font-size:13px;
+      font-weight:600;
+    }
+
+    .platform::before{
+      content:"[ ";
+      color:var(--muted);
+    }
+
+    .platform::after{
+      content:" ]";
+      color:var(--muted);
+    }
+
+    .meta{
+      margin-top:9px;
+      color:var(--muted);
+      font-size:11px;
+    }
+
+    .download-action{
+      margin-top:15px;
+      color:var(--accent);
+      font-size:11px;
+    }
+
+    .download-action::before{
+      content:"-> ";
+      color:var(--accent2);
+    }
+
+    .footer{
+      margin-top:34px;
+      padding-top:18px;
+      border-top:1px dashed var(--line);
+      display:flex;
+      justify-content:space-between;
+      gap:20px;
+      flex-wrap:wrap;
+      color:var(--muted);
+      font-size:11px;
+      line-height:1.8;
+    }
+
+    .footer strong{
+      color:#94a3b8;
+      font-weight:500;
+    }
+
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:24px;
+      transform:translate(-50%,10px);
+      padding:9px 12px;
+      border:1px solid var(--accent2);
+      background:#071018;
+      color:var(--accent2);
+      font-size:11px;
+      opacity:0;
+      pointer-events:none;
+      transition:.15s ease;
+    }
+
+    .toast.show{
+      opacity:1;
+      transform:translate(-50%,0);
+    }
+
+    @media (max-width:720px){
+      .wrap{padding-top:28px}
+      .topline{font-size:10px}
+      .steps{grid-template-columns:1fr}
+      .step{border-right:0;border-bottom:1px solid var(--line)}
+      .step:last-child{border-bottom:0}
+      .download-grid{grid-template-columns:1fr}
+      .ascii-logo{font-size:10px}
+      .command-text{font-size:11px}
     }
   </style>
 </head>
-<body class="bg-[#0b0f19] text-slate-100 font-sans min-h-screen flex flex-col justify-between selection:bg-sky-500 selection:text-white relative overflow-x-hidden">
-  <!-- 背景氛围光 -->
-  <div class="fixed inset-0 glow-effect pointer-events-none"></div>
-  <div class="fixed -top-40 -right-40 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
-  <div class="fixed top-1/2 -left-40 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+<body>
+  <main class="wrap">
+    <div class="topline">
+      <div><span class="brand">./jira-workbench</span></div>
+      <div>__VERSION__ / RELEASE_DATE_PLACEHOLDER</div>
+    </div>
 
-  <!-- 主体内容 -->
-  <main class="flex-1 flex flex-col items-center justify-center px-4 py-12 sm:px-6 relative z-10">
-    <div class="max-w-2xl w-full">
-      
-      <!-- 头部介绍 -->
-      <div class="text-center mb-8">
-        <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-semibold uppercase tracking-wider mb-4">
-          <span class="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
-          <span>Single Binary CLI & Web Dashboard</span>
-        </div>
-        <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent mb-3">
-          Jira Workbench
-        </h1>
-        <p class="text-slate-400 text-sm sm:text-base max-w-md mx-auto leading-relaxed">
-          专注于敏捷开发、缺陷跟踪与团队排期的轻量工作台。单文件极速启动，内置现代交互界面。
-        </p>
+    <section class="hero">
+<pre class="ascii-logo">+--------------------------------------------------+
+|              J I R A   W O R K B E N C H         |
++--------------------------------------------------+</pre>
+
+      <h1>Jira Workbench</h1>
+      <div class="subtitle">
+        专为 Jira 打造的现代化轻量级排期与敏捷协同工作台。
+        Single Binary / Go + React 19 / Local-first.
       </div>
 
-      <!-- 核心下载卡片 -->
-      <div class="bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl mb-6">
-        
-        <!-- 版本状态 -->
-        <div class="flex items-center justify-between pb-6 border-b border-slate-800/80 mb-6">
-          <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center font-bold text-white shadow-lg shadow-sky-500/20">
-              J
-            </div>
-            <div>
-              <div class="text-sm font-bold text-slate-200">最新发行版</div>
-              <div class="text-xs text-slate-500 font-mono" id="release-date">RELEASE_DATE_PLACEHOLDER</div>
-            </div>
+      <div class="install">
+        <div class="section-title">[ install · macOS / Linux ]</div>
+
+        <div class="command" id="unixInstall">
+          <div class="command-prefix">$</div>
+          <div class="command-text" id="installCommand">curl -fsSL https://nextx.uk/jira-work/install.sh | bash</div>
+          <button class="copy" id="copyInstall" type="button" aria-label="复制安装命令">copy</button>
+        </div>
+
+        <p id="installHint">上方命令仅支持 macOS / Linux。Windows 请下载下方 Windows 包，解压后运行 <code>jira.exe -open</code>。</p>
+        <div class="steps">
+          <div class="step">
+            <b>1. install</b>
+            macOS/Linux 执行上方命令；Windows 下载并解压
           </div>
-          <span class="px-3 py-1 bg-sky-500/10 border border-sky-500/30 text-sky-400 font-mono font-semibold text-xs rounded-full" id="version-tag">
-            __VERSION__
-          </span>
-        </div>
-
-        <!-- 终端一键安装 (推荐) -->
-        <div class="mb-6">
-          <div class="flex items-center justify-between text-xs text-slate-400 font-semibold mb-2">
-            <span>⚡ 终端一键安装 (macOS / Linux):</span>
-            <span id="copy-tip" class="text-sky-400 opacity-0 transition-opacity">已复制到剪贴板!</span>
+          <div class="step">
+            <b>2. run</b>
+            <code>jira -open</code> / Windows: <code>.\jira.exe -open</code>
           </div>
-          <div class="relative group">
-            <pre class="bg-slate-950 p-3.5 sm:p-4 rounded-2xl border border-slate-800 text-amber-300 font-mono text-xs sm:text-sm overflow-x-auto select-all cursor-pointer flex items-center justify-between" onclick="copyInstallCmd()"><code id="cmd-text">curl -fsSL https://nextx.uk/jira-work/install.sh | bash</code><button type="button" class="ml-2 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-sans transition">复制</button></pre>
+          <div class="step">
+            <b>3. connect</b>
+            填写 Jira 地址与 Token
           </div>
-        </div>
-
-        <!-- 手动下载按纽 -->
-        <div>
-          <div class="text-xs font-semibold text-slate-400 mb-3">📦 手动下载各平台安装包：</div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="downloads-grid">
-            
-            <!-- macOS Apple Silicon -->
-            <a href="latest/jira-darwin-arm64.tar.gz" id="btn-darwin-arm64" class="download-btn flex items-center justify-between p-3.5 rounded-2xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 hover:border-sky-500/40 transition group">
-              <div class="flex items-center space-x-3">
-                <svg class="w-5 h-5 text-slate-400 group-hover:text-sky-400 transition" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.61-.75 1.04-1.8 0.92-2.87-.92.04-2.08.62-2.73 1.37-.58.66-1.09 1.74-.96 2.78 1.04.08 2.15-.53 2.77-1.28z"/></svg>
-                <div class="text-left">
-                  <div class="text-sm font-semibold text-slate-200 group-hover:text-white">macOS (Apple Silicon)</div>
-                  <div class="text-[11px] text-slate-400">M1 / M2 / M3 / M4 系列</div>
-                </div>
-              </div>
-              <span class="text-xs text-sky-400 opacity-0 group-hover:opacity-100 transition font-mono">.tar.gz →</span>
-            </a>
-
-            <!-- macOS Intel -->
-            <a href="latest/jira-darwin-amd64.tar.gz" id="btn-darwin-amd64" class="download-btn flex items-center justify-between p-3.5 rounded-2xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 hover:border-sky-500/40 transition group">
-              <div class="flex items-center space-x-3">
-                <svg class="w-5 h-5 text-slate-400 group-hover:text-sky-400 transition" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.61-.75 1.04-1.8 0.92-2.87-.92.04-2.08.62-2.73 1.37-.58.66-1.09 1.74-.96 2.78 1.04.08 2.15-.53 2.77-1.28z"/></svg>
-                <div class="text-left">
-                  <div class="text-sm font-semibold text-slate-200 group-hover:text-white">macOS (Intel 芯片)</div>
-                  <div class="text-[11px] text-slate-400">x86_64 架构</div>
-                </div>
-              </div>
-              <span class="text-xs text-sky-400 opacity-0 group-hover:opacity-100 transition font-mono">.tar.gz →</span>
-            </a>
-
-            <!-- Windows 64位 -->
-            <a href="latest/jira-windows-amd64.tar.gz" id="btn-windows" class="download-btn flex items-center justify-between p-3.5 rounded-2xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 hover:border-emerald-500/40 transition group">
-              <div class="flex items-center space-x-3">
-                <svg class="w-5 h-5 text-slate-400 group-hover:text-emerald-400 transition" fill="currentColor" viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.901-1.8"/></svg>
-                <div class="text-left">
-                  <div class="text-sm font-semibold text-slate-200 group-hover:text-white">Windows (64位)</div>
-                  <div class="text-[11px] text-slate-400">解压即用 .exe</div>
-                </div>
-              </div>
-              <span class="text-xs text-emerald-400 opacity-0 group-hover:opacity-100 transition font-mono">.tar.gz →</span>
-            </a>
-
-            <!-- Linux 64位 -->
-            <a href="latest/jira-linux-amd64.tar.gz" id="btn-linux" class="download-btn flex items-center justify-between p-3.5 rounded-2xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 hover:border-sky-500/40 transition group">
-              <div class="flex items-center space-x-3">
-                <svg class="w-5 h-5 text-slate-400 group-hover:text-sky-400 transition" fill="currentColor" viewBox="0 0 24 24"><path d="M12.003 2c-3.03 0-5.485 2.455-5.485 5.485 0 .848.192 1.651.536 2.37C4.693 10.99 3 13.292 3 16.002 3 19.314 5.686 22 8.998 22h6.004C18.314 22 21 19.314 21 16.002c0-2.71-1.693-5.012-4.054-6.147.344-.719.536-1.522.536-2.37C17.488 4.455 15.033 2 12.003 2z"/></svg>
-                <div class="text-left">
-                  <div class="text-sm font-semibold text-slate-200 group-hover:text-white">Linux (64位)</div>
-                  <div class="text-[11px] text-slate-400">Ubuntu / CentOS / Debian</div>
-                </div>
-              </div>
-              <span class="text-xs text-sky-400 opacity-0 group-hover:opacity-100 transition font-mono">.tar.gz →</span>
-            </a>
-
-          </div>
-        </div>
-
-      </div>
-
-      <!-- 特性小标 -->
-      <div class="grid grid-cols-3 gap-4 text-center text-xs text-slate-400">
-        <div class="p-3 bg-slate-900/40 border border-slate-800/50 rounded-xl">
-          <div class="text-sky-400 font-bold mb-0.5">零依赖</div>
-          <div>Go 静态打包</div>
-        </div>
-        <div class="p-3 bg-slate-900/40 border border-slate-800/50 rounded-xl">
-          <div class="text-emerald-400 font-bold mb-0.5">自带 Web</div>
-          <div>React 19 嵌入</div>
-        </div>
-        <div class="p-3 bg-slate-900/40 border border-slate-800/50 rounded-xl">
-          <div class="text-indigo-400 font-bold mb-0.5">本地私有</div>
-          <div>轻量高速运行</div>
         </div>
       </div>
+    </section>
 
+    <section class="downloads">
+      <div class="section-title">[ manual download ]</div>
+
+      <div class="download-grid" id="downloadGrid">
+        <a class="download" data-platform="mac-arm64" href="releases/__VERSION__/jira-darwin-arm64.tar.gz">
+          <div class="platform">macOS / Apple Silicon</div>
+          <div class="meta">arm64 · M1 / M2 / M3 / M4</div>
+          <div class="download-action">jira-darwin-arm64.tar.gz</div>
+        </a>
+
+        <a class="download" data-platform="mac-amd64" href="releases/__VERSION__/jira-darwin-amd64.tar.gz">
+          <div class="platform">macOS / Intel</div>
+          <div class="meta">amd64 · x86_64</div>
+          <div class="download-action">jira-darwin-amd64.tar.gz</div>
+        </a>
+
+        <a class="download" data-platform="windows-amd64" href="releases/__VERSION__/jira-windows-amd64.tar.gz">
+          <div class="platform">Windows</div>
+          <div class="meta">amd64 · 64-bit</div>
+          <div class="download-action">jira-windows-amd64.tar.gz</div>
+        </a>
+
+        <a class="download" data-platform="linux-amd64" href="releases/__VERSION__/jira-linux-amd64.tar.gz">
+          <div class="platform">Linux</div>
+          <div class="meta">amd64 · x86_64</div>
+          <div class="download-action">jira-linux-amd64.tar.gz</div>
+        </a>
+      </div>
+    </section>
+
+    <div class="footer">
+      <div>
+        <strong>[ runtime ]</strong><br>
+        ./jira -open<br>
+        ./jira -H 0.0.0.0
+      </div>
+      <div>
+        <strong>[ spec ]</strong><br>
+        single binary<br>
+        ~20-30MB memory
+      </div>
     </div>
   </main>
 
-  <footer class="py-6 text-center text-xs text-slate-600 relative z-10">
-    <p>© Jira Workbench · 构建于 GitHub/Gitea Actions & Cloudflare CDN</p>
-  </footer>
+  <div class="toast" id="toast">[ copied ]</div>
 
   <script>
-    // 自动检测系统并高亮推荐按钮
-    (function highlightOS() {
-      const ua = navigator.userAgent.toLowerCase();
-      let targetId = '';
-      if (ua.includes('mac')) {
-        targetId = 'btn-darwin-arm64'; // 默认高亮 Apple Silicon
-      } else if (ua.includes('win')) {
-        targetId = 'btn-windows';
-      } else if (ua.includes('linux')) {
-        targetId = 'btn-linux';
+    (function(){
+      const command = "curl -fsSL https://nextx.uk/jira-work/install.sh | bash";
+      const cards = Array.from(document.querySelectorAll(".download"));
+      const toast = document.getElementById("toast");
+
+      function normalizeArch(v){
+        const a = String(v || "").toLowerCase();
+        if (a.includes("arm") || a.includes("aarch64")) return "arm64";
+        if (a.includes("x86") || a.includes("amd64") || a.includes("x64")) return "amd64";
+        return "";
       }
 
-      if (targetId) {
-        const btn = document.getElementById(targetId);
-        if (btn) {
-          btn.classList.add('ring-2', 'ring-sky-500', 'bg-sky-500/10');
+      async function detect(){
+        const ua = navigator.userAgent || "";
+        const platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "";
+        let arch = "";
+
+        if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues){
+          try{
+            const v = await navigator.userAgentData.getHighEntropyValues(["architecture","platform"]);
+            arch = normalizeArch(v.architecture);
+          }catch(_){}
         }
-      }
-    })();
 
-    function copyInstallCmd() {
-      const cmd = document.getElementById('cmd-text').innerText;
-      navigator.clipboard.writeText(cmd).then(() => {
-        const tip = document.getElementById('copy-tip');
-        tip.classList.remove('opacity-0');
-        setTimeout(() => tip.classList.add('opacity-0'), 2000);
+        const src = (platform + " " + ua).toLowerCase();
+
+        if (/win/.test(src)) return "windows-amd64";
+        if (/linux|x11/.test(src) && !/android/.test(src)) return "linux-amd64";
+        if (/mac|macintosh|darwin/.test(src)){
+          return arch === "amd64" ? "mac-amd64" : "mac-arm64";
+        }
+        return "";
+      }
+
+      detect().then(key=>{
+        if (key === "windows-amd64") {
+          document.getElementById("unixInstall").hidden = true;
+          document.getElementById("unixInstall").style.display = "none";
+          document.getElementById("installHint").textContent = "Windows 不支持上方 Bash 安装方式。请下载下方 Windows 包，解压后运行 jira.exe，或在 PowerShell 中运行 .\\jira.exe -open。";
+        }
+        cards.forEach(card=>{
+          card.classList.toggle("recommended", card.dataset.platform === key);
+        });
       });
-    }
+
+      async function copyText(text){
+        if (navigator.clipboard && window.isSecureContext){
+          await navigator.clipboard.writeText(text);
+          return;
+        }
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+      }
+
+      document.getElementById("copyInstall").addEventListener("click", async ()=>{
+        try{
+          await copyText(command);
+          toast.classList.add("show");
+          setTimeout(()=>toast.classList.remove("show"),1400);
+        }catch(_){}
+      });
+    })();
   </script>
 </body>
 </html>
