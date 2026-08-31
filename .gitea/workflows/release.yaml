@@ -1,0 +1,175 @@
+name: Build Multi-Platform & Deploy to nextx.uk
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  DOWNLOAD_BASE_URL: "https://nextx.uk/jira-work"
+  DEPLOY_TARGET_DIR: "/var/www/jira-work"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'web/package-lock.json'
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+
+      # 1. 构建 Web 前端
+      - name: Build Web Frontend
+        run: |
+          echo "==> 1. 构建 Web 前端静态产物..."
+          cd web
+          npm ci
+          npm run build
+          cd ..
+
+      # 2. 跨平台交叉编译 Go 二进制并打包
+      - name: Build Multi-Platform Binaries
+        run: |
+          echo "==> 2. 跨平台编译 Go 单二进制程序..."
+          VERSION=${GITHUB_REF_NAME:-v1.0.0}
+          BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          DATE_DISPLAY=$(date +"%Y-%m-%d")
+
+          mkdir -p dist/latest
+
+          # macOS (Apple Silicon arm64)
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w -X main.Version=${VERSION}" -o dist/jira main.go
+          tar -czvf dist/latest/jira-darwin-arm64.tar.gz -C dist jira
+          rm dist/jira
+
+          # macOS (Intel amd64)
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w -X main.Version=${VERSION}" -o dist/jira main.go
+          tar -czvf dist/latest/jira-darwin-amd64.tar.gz -C dist jira
+          rm dist/jira
+
+          # Linux (amd64)
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -X main.Version=${VERSION}" -o dist/jira main.go
+          tar -czvf dist/latest/jira-linux-amd64.tar.gz -C dist jira
+          rm dist/jira
+
+          # Windows (amd64)
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -X main.Version=${VERSION}" -o dist/jira.exe main.go
+          zip -j dist/latest/jira-windows-amd64.zip dist/jira.exe
+          rm dist/jira.exe
+
+          # 3. 生成版本元数据 version.json
+          cat <<EOF > dist/latest/version.json
+          {
+            "version": "${VERSION}",
+            "built_at": "${BUILD_TIME}",
+            "download_base": "${DOWNLOAD_BASE_URL}/latest"
+          }
+          EOF
+
+          # 4. 生成一键安装脚本 install.sh
+          cat << 'EOF' > dist/install.sh
+          #!/bin/bash
+          set -e
+          BASE_URL="https://nextx.uk/jira-work/latest"
+          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          ARCH=$(uname -m)
+
+          if [ "$ARCH" = "x86_64" ]; then ARCH="amd64"; fi
+          if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then ARCH="arm64"; fi
+
+          TAR_FILE="jira-${OS}-${ARCH}.tar.gz"
+          echo "🚀 正在下载 Jira Workbench (${OS}/${ARCH})..."
+          curl -fsSL "${BASE_URL}/${TAR_FILE}" -o /tmp/${TAR_FILE}
+
+          tar -xzf /tmp/${TAR_FILE} -C /tmp
+          sudo mv /tmp/jira /usr/local/bin/jira
+          rm /tmp/${TAR_FILE}
+          echo "✅ 安装成功！在终端输入 'jira -open' 即可启动工作台。"
+          EOF
+          chmod +x dist/install.sh
+
+          # 5. 组装下载落地页 index.html (注入版本号和时间)
+          sed -e "s/__VERSION__/${VERSION}/g" \
+              -e "s/RELEASE_DATE_PLACEHOLDER/${DATE_DISPLAY}/g" \
+              deploy/index.html > dist/index.html
+
+      # 3. 部署到服务器本地目录 /var/www/jira-work (若 Runner 在本机)
+      - name: Deploy to /var/www/jira-work
+        run: |
+          echo "==> 3. 部署发布产物到 Nginx 发布目录: ${DEPLOY_TARGET_DIR}"
+          if [ -d "${DEPLOY_TARGET_DIR}" ] || sudo mkdir -p "${DEPLOY_TARGET_DIR}" 2>/dev/null || mkdir -p "${DEPLOY_TARGET_DIR}" 2>/dev/null; then
+            sudo cp -rf dist/* "${DEPLOY_TARGET_DIR}/" 2>/dev/null || cp -rf dist/* "${DEPLOY_TARGET_DIR}/"
+            echo "✓ 成功同步所有构建包与页面到 ${DEPLOY_TARGET_DIR}"
+          else
+            echo "ℹ️ ${DEPLOY_TARGET_DIR} 目录不可直接写入，可能运行在隔离容器中。"
+          fi
+
+      # 4. 如果配置了 SSH 远程部署（支持 Runner 与 Nginx 不在同一容器场景）
+      - name: Deploy via SSH (Optional)
+        if: ${{ secrets.SSH_HOST != '' && secrets.SSH_KEY != '' }}
+        uses: easingthemes/ssh-deploy@main
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY }}
+          ARGS: "-rltgoDzvO --delete"
+          SOURCE: "dist/"
+          REMOTE_HOST: ${{ secrets.SSH_HOST }}
+          REMOTE_USER: ${{ secrets.SSH_USER || 'root' }}
+          TARGET: "/var/www/jira-work"
+
+      # 5. Telegram 成功通知
+      - name: Send Telegram Notification on Success
+        if: ${{ success() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != '' }}
+        run: |
+          VERSION=${GITHUB_REF_NAME:-v1.0.0}
+          COMMIT_MSG=$(git log -1 --pretty=format:'%s')
+          AUTHOR=$(git log -1 --pretty=format:'%an')
+          BASE="${DOWNLOAD_BASE_URL}"
+
+          MESSAGE="🚀 <b>Jira Workbench 编译与发布成功！</b>%0A%0A"
+          MESSAGE="${MESSAGE}🏷 <b>版本号:</b> <code>${VERSION}</code>%0A"
+          MESSAGE="${MESSAGE}👤 <b>发布者:</b> ${AUTHOR}%0A"
+          MESSAGE="${MESSAGE}📝 <b>提交信息:</b> ${COMMIT_MSG}%0A%0A"
+          MESSAGE="${MESSAGE}📦 <b>各平台下载包:</b>%0A"
+          MESSAGE="${MESSAGE} • macOS (Apple Silicon): <a href=\"${BASE}/latest/jira-darwin-arm64.tar.gz\">下载</a>%0A"
+          MESSAGE="${MESSAGE} • macOS (Intel): <a href=\"${BASE}/latest/jira-darwin-amd64.tar.gz\">下载</a>%0A"
+          MESSAGE="${MESSAGE} • Windows (x64): <a href=\"${BASE}/latest/jira-windows-amd64.zip\">下载</a>%0A"
+          MESSAGE="${MESSAGE} • Linux (x64): <a href=\"${BASE}/latest/jira-linux-amd64.tar.gz\">下载</a>%0A%0A"
+          MESSAGE="${MESSAGE}⚡ <b>一键安装命令:</b>%0A<code>curl -fsSL ${BASE}/install.sh | bash</code>%0A%0A"
+          MESSAGE="${MESSAGE}🌐 <b>下载落地页:</b> ${BASE}/"
+
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d "parse_mode=HTML" \
+            -d "disable_web_page_preview=true" \
+            -d "text=${MESSAGE}"
+
+      # 6. Telegram 失败告警
+      - name: Send Telegram Notification on Failure
+        if: ${{ failure() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != '' }}
+        run: |
+          VERSION=${GITHUB_REF_NAME:-latest}
+          COMMIT_MSG=$(git log -1 --pretty=format:'%s')
+
+          MESSAGE="❌ <b>Jira Workbench 构建失败！</b>%0A%0A"
+          MESSAGE="${MESSAGE}🏷 <b>分支/标签:</b> <code>${VERSION}</code>%0A"
+          MESSAGE="${MESSAGE}📝 <b>提交信息:</b> ${COMMIT_MSG}%0A"
+          MESSAGE="${MESSAGE}⚠️ 请登录 Gitea Actions 控制台查看详细构建日志。"
+
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d "parse_mode=HTML" \
+            -d "text=${MESSAGE}"

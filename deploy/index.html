@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jira Workbench - 任务与团队排期工作台</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .glow-effect {
+      background: radial-gradient(circle at 50% 0%, rgba(14, 165, 233, 0.15), transparent 70%);
+    }
+  </style>
+</head>
+<body class="bg-[#0b0f19] text-slate-100 font-sans min-h-screen flex flex-col justify-between selection:bg-sky-500 selection:text-white relative overflow-x-hidden">
+  <!-- 背景氛围光 -->
+  <div class="fixed inset-0 glow-effect pointer-events-none"></div>
+  <div class="fixed -top-40 -right-40 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
+  <div class="fixed top-1/2 -left-40 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+  <!-- 主体内容 -->
+  <main class="flex-1 flex flex-col items-center justify-center px-4 py-12 sm:px-6 relative z-10">
+    <div class="max-w-2xl w-full">
+      
+      <!-- 头部介绍 -->
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-semibold uppercase tracking-wider mb-4">
+          <span class="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
+          <span>Single Binary CLI & Web Dashboard</span>
+        </div>
+        <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent mb-3">
+          Jira Workbench
+        </h1>
+        <p class="text-slate-400 text-sm sm:text-base max-w-md mx-auto leading-relaxed">
+          专注于敏捷开发、缺陷跟踪与团队排期的轻量工作台。单文件极速启动，内置现代交互界面。
+        </p>
+      </div>
+
+      <!-- 核心下载卡片 -->
+      <div class="bg-slate-900/80 border border-slate-800/80 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl mb-6">
+        
+        <!-- 版本状态 -->
+        <div class="flex items-center justify-between pb-6 border-b border-slate-800/80 mb-6">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center font-bold text-white shadow-lg shadow-sky-500/20">
+              J
+            </div>
+            <div>
+              <div class="text-sm font-bold text-slate-200">最新发行版</div>
+              <div class="text-xs text-slate-500 font-mono" id="release-date">RELEASE_DATE_PLACEHOLDER</div>
+            </div>
+          </div>
+          <span class="px-3 py-1 bg-sky-500/10 border border-sky-500/30 text-sky-400 font-mono font-semibold text-xs rounded-full" id="version-tag">
+            __VERSION__
+          </span>
+        </div>
+
+        <!-- 终端一键安装 (推荐) -->
+        <div class="mb-6">
+          <div class="flex items-center justify-between text-xs text-slate-400 font-semibold mb-2">
+            <span>⚡ 终端一键安装 (macOS / Linux):</span>
+            <span id="copy-tip" class="text-sky-400 opacity-0 transition-opacity">已复制到剪贴板!</span>
+          </div>
+          <div class="relative group">
+            <pre class="bg-slate-950 p-3.5 sm:p-4 rounded-2xl border border-slate-800 text-amber-300 font-mono text-xs sm:text-sm overflow-x-auto select-all cursor-pointer flex items-center justify-between" onclick="copyInstallCmd()"><code id="cmd-text">curl -fsSL https://nextx.uk/jira-work/install.sh | bash</code><button type="button" class="ml-2 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-sans transition">复制</button></pre>
+          </div>
+        </div>
+
+        <!-- 手动下载按纽 -->
+        <div>
+          <div class="text-xs font-semibold text-slate-400 mb-3">📦 手动下载各平台安装包：</div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="downloads-grid">
+            
+            <!-- macOS Apple Silicon -->
+            <a href="latest/jira-darwin-arm64.tar.gz" id="btn-darwin-arm64" class="download-btn flex items-center justify-between p-3.5 rounded-2xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 hover:border-sky-500/40 transition group">
+              <div class="flex items-center space-x-3">
+                <svg class="w-5 h-5 text-slate-400 group-hover:text-sky-400 transition" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.61-.75 1.04-1.8 0.92-2.87-.92.04-2.08.62-2.73 1.37-.58.66-1.09 1.74-.96 2.78 1.04.08 2.15-.53 2.77-1.28z"/></svg>
+                <div class="text-left">
+                  <div class="text-sm font-semibold text-slate-200 group-hover:text-white">macOS (Apple Silicon)</div>
+                  <div class="text-[11px] text-slate-400">M1 / M2 / M3 / M4 系列</div>
+                </div>
+              </div>
+              <span class="text-xs text-sky-400 opacity-0 group-hover:opacity-100 transition font-mono">.tar.gz →</span>
+            </a>
+
+            <!-- macOS Intel -->
+            <a href="latest/jira-darwin-amd64.tar.gz" id="btn-darwin-amd64" class="download-btn flex items-center justify-between p-3.5 rounded-2xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 hover:border-sky-500/40 transition group">
+              <div class="flex items-center space-x-3">
+                <svg class="w-5 h-5 text-slate-400 group-hover:text-sky-400 transition" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.61-.75 1.04-1.8 0.92-2.87-.92.04-2.08.62-2.73 1.37-.58.66-1.09 1.74-.96 2.78 1.04.08 2.15-.53 2.77-1.28z"/></svg>
+                <div class="text-left">
+                  <div class="text-sm font-semibold text-slate-200 group-hover:text-white">macOS (Intel 芯片)</div>
+                  <div class="text-[11px] text-slate-400">x86_64 架构</div>
+                </div>
+              </div>
+              <span class="text-xs text-sky-400 opacity-0 group-hover:opacity-100 transition font-mono">.tar.gz →</span>
+            </a>
+
+            <!-- Windows 64位 -->
+            <a href="latest/jira-windows-amd64.zip" id="btn-windows" class="download-btn flex items-center justify-between p-3.5 rounded-2xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 hover:border-emerald-500/40 transition group">
+              <div class="flex items-center space-x-3">
+                <svg class="w-5 h-5 text-slate-400 group-hover:text-emerald-400 transition" fill="currentColor" viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.901-1.8"/></svg>
+                <div class="text-left">
+                  <div class="text-sm font-semibold text-slate-200 group-hover:text-white">Windows (64位)</div>
+                  <div class="text-[11px] text-slate-400">解压即用 .exe</div>
+                </div>
+              </div>
+              <span class="text-xs text-emerald-400 opacity-0 group-hover:opacity-100 transition font-mono">.zip →</span>
+            </a>
+
+            <!-- Linux 64位 -->
+            <a href="latest/jira-linux-amd64.tar.gz" id="btn-linux" class="download-btn flex items-center justify-between p-3.5 rounded-2xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/60 hover:border-sky-500/40 transition group">
+              <div class="flex items-center space-x-3">
+                <svg class="w-5 h-5 text-slate-400 group-hover:text-sky-400 transition" fill="currentColor" viewBox="0 0 24 24"><path d="M12.003 2c-3.03 0-5.485 2.455-5.485 5.485 0 .848.192 1.651.536 2.37C4.693 10.99 3 13.292 3 16.002 3 19.314 5.686 22 8.998 22h6.004C18.314 22 21 19.314 21 16.002c0-2.71-1.693-5.012-4.054-6.147.344-.719.536-1.522.536-2.37C17.488 4.455 15.033 2 12.003 2z"/></svg>
+                <div class="text-left">
+                  <div class="text-sm font-semibold text-slate-200 group-hover:text-white">Linux (64位)</div>
+                  <div class="text-[11px] text-slate-400">Ubuntu / CentOS / Debian</div>
+                </div>
+              </div>
+              <span class="text-xs text-sky-400 opacity-0 group-hover:opacity-100 transition font-mono">.tar.gz →</span>
+            </a>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 特性小标 -->
+      <div class="grid grid-cols-3 gap-4 text-center text-xs text-slate-400">
+        <div class="p-3 bg-slate-900/40 border border-slate-800/50 rounded-xl">
+          <div class="text-sky-400 font-bold mb-0.5">零依赖</div>
+          <div>Go 静态打包</div>
+        </div>
+        <div class="p-3 bg-slate-900/40 border border-slate-800/50 rounded-xl">
+          <div class="text-emerald-400 font-bold mb-0.5">自带 Web</div>
+          <div>React 19 嵌入</div>
+        </div>
+        <div class="p-3 bg-slate-900/40 border border-slate-800/50 rounded-xl">
+          <div class="text-indigo-400 font-bold mb-0.5">本地私有</div>
+          <div>轻量高速运行</div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="py-6 text-center text-xs text-slate-600 relative z-10">
+    <p>© Jira Workbench · 构建于 GitHub/Gitea Actions & Cloudflare CDN</p>
+  </footer>
+
+  <script>
+    // 自动检测系统并高亮推荐按钮
+    (function highlightOS() {
+      const ua = navigator.userAgent.toLowerCase();
+      let targetId = '';
+      if (ua.includes('mac')) {
+        targetId = 'btn-darwin-arm64'; // 默认高亮 Apple Silicon
+      } else if (ua.includes('win')) {
+        targetId = 'btn-windows';
+      } else if (ua.includes('linux')) {
+        targetId = 'btn-linux';
+      }
+
+      if (targetId) {
+        const btn = document.getElementById(targetId);
+        if (btn) {
+          btn.classList.add('ring-2', 'ring-sky-500', 'bg-sky-500/10');
+        }
+      }
+    })();
+
+    function copyInstallCmd() {
+      const cmd = document.getElementById('cmd-text').innerText;
+      navigator.clipboard.writeText(cmd).then(() => {
+        const tip = document.getElementById('copy-tip');
+        tip.classList.remove('opacity-0');
+        setTimeout(() => tip.classList.add('opacity-0'), 2000);
+      });
+    }
+  </script>
+</body>
+</html>
