@@ -7,7 +7,6 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
-  Search,
   Clock,
   ExternalLink,
 } from 'lucide-react'
@@ -86,9 +85,6 @@ export const TasksPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'todo' | 'bugs' | 'all'>('todo')
   const [unresolvedBugsCount, setUnresolvedBugsCount] = useState(0)
   
-  const [statusFilter, setStatusFilter] = useState('')
-  const [assigneeFilter, setAssigneeFilter] = useState('currentUser()')
-  const [searchQuery, setSearchQuery] = useState('')
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [jiraUrl, setJiraUrl] = useState('')
 
@@ -199,8 +195,7 @@ export const TasksPage: React.FC = () => {
     setLoading(true)
     api.getIssues({
       month: queryMonth || undefined,
-      status: statusFilter || undefined,
-      assignee: assigneeFilter || undefined,
+      assignee: 'currentUser()',
     })
       .then((data) => {
         setIssues(data || [])
@@ -215,7 +210,7 @@ export const TasksPage: React.FC = () => {
 
   useEffect(() => {
     loadIssues()
-  }, [queryMonth, statusFilter, assigneeFilter])
+  }, [queryMonth])
 
   // 1. 本周任务（展示全部状态，包含待办、进行中、已完成/已实现）：排期与本周有交集，或未设置日期的任务
   const weekIssues = useMemo(() => {
@@ -237,22 +232,8 @@ export const TasksPage: React.FC = () => {
     })
   }, [issues, weekStart, weekEnd])
 
-  // 2. 根据当前选中的 Tab 决定基准数据源
-  const baseIssues = activeTab === 'todo' ? weekIssues : issues
-
-  // 3. 本地搜索过滤 (Key / 标题 / 父需求 / 经办人)
-  const displayIssues = useMemo(() => {
-    if (!searchQuery.trim()) return baseIssues
-    const q = searchQuery.toLowerCase().trim()
-    return baseIssues.filter(
-      (item) =>
-        item.key.toLowerCase().includes(q) ||
-        item.summary.toLowerCase().includes(q) ||
-        (item.parentKey && item.parentKey.toLowerCase().includes(q)) ||
-        (item.parentSummary && item.parentSummary.toLowerCase().includes(q)) ||
-        (item.assignee?.displayName && item.assignee.displayName.toLowerCase().includes(q))
-    )
-  }, [baseIssues, searchQuery])
+  // 2. 根据当前选中的 Tab 决定展示数据源
+  const displayIssues = activeTab === 'todo' ? weekIssues : issues
 
   // 统计工时
   const totalEstimateSeconds = useMemo(() => {
@@ -450,50 +431,6 @@ export const TasksPage: React.FC = () => {
                 </button>
               )}
             </div>
-          )}
-
-          {/* 任务搜索与过滤（仅在 todo 和 all 模式下展示） */}
-          {activeTab !== 'bugs' && (
-            <>
-              <div
-                data-ui="search-input"
-                data-mobile-visibility="page-search"
-                style={{ position: 'relative', display: 'flex', alignItems: 'center' }}
-              >
-                <Search size={14} style={{ position: 'absolute', left: '10px', color: 'var(--text-muted)' }} />
-                <input
-                  data-ui="input"
-                  placeholder="搜索 Key / 标题..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{ paddingLeft: '30px', width: '170px', fontSize: '12.5px' }}
-                />
-              </div>
-
-              <select
-                data-ui="select"
-                data-mobile-visibility="secondary-filter"
-                value={assigneeFilter}
-                onChange={(e) => setAssigneeFilter(e.target.value)}
-                style={{ width: '130px', fontSize: '12.5px' }}
-              >
-                <option value="currentUser()">仅我的任务</option>
-                <option value="">所有成员</option>
-              </select>
-
-              <select
-                data-ui="select"
-                data-mobile-visibility="secondary-filter"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                style={{ width: '130px', fontSize: '12.5px' }}
-              >
-                <option value="">全部状态</option>
-                <option value="待办">待办 (To Do)</option>
-                <option value="进行中">进行中 (In Progress)</option>
-                <option value="已完成">已完成 (Done)</option>
-              </select>
-            </>
           )}
         </div>
 
