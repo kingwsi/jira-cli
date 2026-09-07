@@ -301,7 +301,7 @@ export const BugsPage: React.FC<BugsPageProps> = ({ embedded = false, onUnresolv
                             setResolvingAnchorRect(rect)
                             setResolvingIssue(item)
                           }}
-                          title="快捷流转并指派给创建人"
+                          title="处理任务 (解决 / 指派他人 / 拒绝)"
                           style={{
                             padding: '3px 8px',
                             fontSize: '12px',

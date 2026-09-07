@@ -12,12 +12,14 @@ import {
   Check,
   ChevronDown,
   Activity,
+  Sparkles,
 } from 'lucide-react'
 import { api } from '../api/client'
 import { PlanningTreeNode } from '../types'
 import { TaskDrawer } from '../components/TaskDrawer'
 import { PlanningSkeleton } from '../components/Skeleton'
 import { DayHolidayInfo, getMonthDaysWithHolidays, syncHolidaysFromRemote } from '../utils/holidays'
+import { getFrequentUsers, loadFrequentUsers, recordUserSelection, UserHistoryItem } from '../utils/recentUsers'
 
 export interface DailyWorkloadTask {
   key: string
@@ -89,7 +91,16 @@ export const PlanningPage: React.FC = () => {
   const [userSearchText, setUserSearchText] = useState('')
   const [remoteUsers, setRemoteUsers] = useState<any[]>([])
   const [searchingUsers, setSearchingUsers] = useState(false)
+  const [frequentUsers, setFrequentUsers] = useState<UserHistoryItem[]>([])
   const userDropdownRef = useRef<HTMLDivElement>(null)
+
+  // 打开下拉时刷新常用成员历史
+  useEffect(() => {
+    if (userDropdownOpen) {
+      setFrequentUsers(getFrequentUsers(8))
+      loadFrequentUsers(8).then(setFrequentUsers).catch(() => { })
+    }
+  }, [userDropdownOpen])
 
   const [treeData, setTreeData] = useState<PlanningTreeNode[]>([])
   const [loading, setLoading] = useState(false)
@@ -335,12 +346,12 @@ export const PlanningPage: React.FC = () => {
   }
 
   useEffect(() => {
-    api.getCurrentUser().then(setCurrentUser).catch(() => {})
+    api.getCurrentUser().then(setCurrentUser).catch(() => { })
     api.getConfig().then((cfg) => {
       if (cfg && cfg.url) {
         setJiraBaseUrl(cfg.url.replace(/\/+$/, ''))
       }
-    }).catch(() => {})
+    }).catch(() => { })
   }, [])
 
   const handleOpenJira = (key: string, e?: React.MouseEvent) => {
@@ -1048,6 +1059,59 @@ export const PlanningPage: React.FC = () => {
                       </div>
                       {assigneeFilter === '' && <Check size={14} />}
                     </div>
+
+                    {/* 常用成员列表 (来自本地与后端数据库) */}
+                    {frequentUsers.length > 0 && (
+                      <div style={{ marginTop: '4px', paddingTop: '4px', borderTop: '1px solid var(--border-subtle)' }}>
+                        <div
+                          style={{
+                            padding: '3px 8px',
+                            fontSize: '10.5px',
+                            color: 'var(--text-muted)',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                          }}
+                        >
+                          <Sparkles size={10} color="var(--color-warning)" />
+                          <span>常用成员</span>
+                        </div>
+                        {frequentUsers.map((fu) => {
+                          const isSelected = assigneeFilter === fu.name || assigneeFilter === fu.displayName
+                          return (
+                            <div
+                              key={fu.name}
+                              onClick={() => {
+                                setAssigneeFilter(fu.name)
+                                recordUserSelection(fu)
+                                setUserDropdownOpen(false)
+                              }}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '5px 8px',
+                                borderRadius: 'var(--radius-sm)',
+                                cursor: 'pointer',
+                                fontSize: '12px',
+                                backgroundColor: isSelected ? 'var(--bg-surface-hover)' : 'transparent',
+                                fontWeight: isSelected ? 600 : 400,
+                                color: isSelected ? 'var(--color-primary)' : 'inherit',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <User size={12} color="var(--color-primary)" />
+                                <span>{fu.displayName || fu.name}</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                {isSelected && <Check size={13} />}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1069,11 +1133,16 @@ export const PlanningPage: React.FC = () => {
                     remoteUsers.map((u) => {
                       const userVal = u.name || u.displayName
                       const isSelected = assigneeFilter === userVal || assigneeFilter === u.displayName
+                      const freq = frequentUsers.find((f) => f.name === u.name)
                       return (
                         <div
                           key={u.name || u.key || u.displayName}
                           onClick={() => {
                             setAssigneeFilter(userVal)
+                            recordUserSelection({
+                              name: u.name || userVal,
+                              displayName: u.displayName || u.name,
+                            })
                             setUserDropdownOpen(false)
                           }}
                           style={{
@@ -1113,7 +1182,23 @@ export const PlanningPage: React.FC = () => {
                               )}
                             </div>
                           </div>
-                          {isSelected && <Check size={14} />}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {freq && (
+                              <span
+                                style={{
+                                  fontSize: '9px',
+                                  padding: '1px 5px',
+                                  borderRadius: '3px',
+                                  backgroundColor: 'var(--bg-primary-subtle)',
+                                  color: 'var(--color-primary)',
+                                  fontWeight: 500,
+                                }}
+                              >
+                                常用
+                              </span>
+                            )}
+                            {isSelected && <Check size={14} />}
+                          </div>
                         </div>
                       )
                     })}
@@ -1333,8 +1418,8 @@ export const PlanningPage: React.FC = () => {
                             color: row.isParent
                               ? '#403294'
                               : isBug
-                              ? 'var(--color-danger)'
-                              : 'var(--color-primary)',
+                                ? 'var(--color-danger)'
+                                : 'var(--color-primary)',
                             fontSize: '11.5px',
                             minWidth: '82px',
                             display: 'inline-flex',
@@ -1474,9 +1559,9 @@ export const PlanningPage: React.FC = () => {
                             ...barStyle,
                             ...(isHighlighted
                               ? {
-                                  boxShadow: '0 0 0 2px #ffab00, 0 4px 14px rgba(255, 171, 0, 0.5)',
-                                  zIndex: 15,
-                                }
+                                boxShadow: '0 0 0 2px #ffab00, 0 4px 14px rgba(255, 171, 0, 0.5)',
+                                zIndex: 15,
+                              }
                               : {}),
                           }}
                           onClick={() => setSelectedIssueKey(row.key)}
@@ -1584,8 +1669,8 @@ export const PlanningPage: React.FC = () => {
                       pressureTooltip.data.loadPercent > 120
                         ? '#ff5630'
                         : pressureTooltip.data.loadPercent > 100
-                        ? '#ffab00'
-                        : '#36b37e',
+                          ? '#ffab00'
+                          : '#36b37e',
                   }}
                 >
                   {pressureTooltip.data.loadPercent}%

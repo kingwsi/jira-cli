@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react'
-import { X, Clock, ArrowRight, ExternalLink, User, Eye, Edit3 } from 'lucide-react'
-import { IssueItem, Transition } from '../types'
+import React, { useState, useEffect, useRef } from 'react'
+import { X, Clock, ArrowRight, ExternalLink, User, UserPlus, Search, Check, Eye, Edit3, Sparkles } from 'lucide-react'
+import { IssueItem, Transition, UserInfo } from '../types'
 import { api } from '../api/client'
 import { DatePicker } from './DatePicker'
 import { DrawerSkeleton } from './Skeleton'
 import { JiraRenderer } from './JiraRenderer'
 import { AttachmentGallery } from './AttachmentGallery'
+import { QuickResolveModal } from './QuickResolveModal'
+import { getFrequentUsers, loadFrequentUsers, recordUserSelection, UserHistoryItem } from '../utils/recentUsers'
 
 interface TaskDrawerProps {
   issueKey: string | null
@@ -20,6 +22,8 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ issueKey, onClose, onUpd
   const [transitions, setTransitions] = useState<Transition[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [resolvingOpen, setResolvingOpen] = useState(false)
+  const [resolvingAnchorRect, setResolvingAnchorRect] = useState<DOMRect | null>(null)
 
   // Edit fields
   const [summary, setSummary] = useState('')
@@ -28,6 +32,15 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ issueKey, onClose, onUpd
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [originalEstimate, setOriginalEstimate] = useState('')
+  const [assignee, setAssignee] = useState<{ name: string; displayName: string } | null>(null)
+
+  // User search dropdown & frequent users
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false)
+  const [userSearchText, setUserSearchText] = useState('')
+  const [remoteUsers, setRemoteUsers] = useState<UserInfo[]>([])
+  const [searchingUsers, setSearchingUsers] = useState(false)
+  const [frequentUsers, setFrequentUsers] = useState<UserHistoryItem[]>([])
+  const userPickerRef = useRef<HTMLDivElement>(null)
 
   // Quick worklog
   const [worklogTime, setWorklogTime] = useState('')
@@ -41,7 +54,7 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ issueKey, onClose, onUpd
           setJiraBaseUrl(cfg.url.replace(/\/+$/, ''))
         }
       })
-      .catch(() => {})
+      .catch(() => { })
   }, [])
 
   useEffect(() => {
@@ -70,6 +83,14 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ issueKey, onClose, onUpd
         } else {
           setOriginalEstimate('')
         }
+        if (issueData.assignee) {
+          setAssignee({
+            name: issueData.assignee.name,
+            displayName: issueData.assignee.displayName || issueData.assignee.name,
+          })
+        } else {
+          setAssignee(null)
+        }
         setTransitions(transList)
       })
       .catch((err) => {
@@ -79,6 +100,48 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ issueKey, onClose, onUpd
         setLoading(false)
       })
   }, [issueKey])
+
+  // 远程成员防抖搜索
+  useEffect(() => {
+    if (!userDropdownOpen) return
+
+    const timer = setTimeout(() => {
+      setSearchingUsers(true)
+      api
+        .searchUsers(userSearchText.trim())
+        .then((res) => {
+          setRemoteUsers(res || [])
+        })
+        .catch(() => setRemoteUsers([]))
+        .finally(() => setSearchingUsers(false))
+    }, 200)
+
+    return () => clearTimeout(timer)
+  }, [userSearchText, userDropdownOpen])
+
+  // 打开下拉时刷新常用成员
+  useEffect(() => {
+    if (userDropdownOpen) {
+      setFrequentUsers(getFrequentUsers(8))
+      loadFrequentUsers(8).then(setFrequentUsers).catch(() => { })
+    }
+  }, [userDropdownOpen])
+
+  // 点击外部关闭人员搜索下拉
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        userPickerRef.current &&
+        !userPickerRef.current.contains(event.target as Node)
+      ) {
+        setUserDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
 
   if (!issueKey) return null
 
@@ -91,12 +154,24 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ issueKey, onClose, onUpd
         description,
         startDate,
         endDate,
+        assignee: assignee ? assignee.name : '',
         originalEstimate: originalEstimate.trim(),
       })
+      if (assignee) {
+        recordUserSelection(assignee)
+      }
       if (onUpdated) onUpdated()
       // 重新加载
       const updated = await api.getIssue(issue.key)
       setIssue(updated)
+      if (updated.assignee) {
+        setAssignee({
+          name: updated.assignee.name,
+          displayName: updated.assignee.displayName || updated.assignee.name,
+        })
+      } else {
+        setAssignee(null)
+      }
       if (updated.originalEstimateSeconds && updated.originalEstimateSeconds > 0) {
         const hours = updated.originalEstimateSeconds / 3600
         setOriginalEstimate(Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(1)}h`)
@@ -170,8 +245,8 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ issueKey, onClose, onUpd
                   issue.statusCategory === 'Done'
                     ? 'done'
                     : issue.statusCategory === 'In Progress'
-                    ? 'in-progress'
-                    : 'todo'
+                      ? 'in-progress'
+                      : 'todo'
                 }
               >
                 {issue.status}
@@ -290,9 +365,232 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ issueKey, onClose, onUpd
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                 <div data-ui="form-group">
-                  <label data-ui="form-label">经办人</label>
-                  <div style={{ fontSize: '13px', fontWeight: 500, padding: '7px 0' }}>
-                    {issue.assignee?.displayName || '未指派'}
+                  <label data-ui="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>经办人</span>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>点击修改指派</span>
+                  </label>
+                  <div ref={userPickerRef} style={{ position: 'relative' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        border: '1px solid var(--border-default)',
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '5px 8px',
+                        backgroundColor: 'var(--bg-surface)',
+                        cursor: 'pointer',
+                        minHeight: '32px',
+                        boxSizing: 'border-box',
+                      }}
+                      onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                    >
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+                        <User size={14} color={assignee ? 'var(--color-primary)' : 'var(--text-muted)'} />
+                        <span style={{ fontWeight: assignee ? 600 : 400, color: assignee ? 'var(--text-default)' : 'var(--text-muted)' }}>
+                          {assignee ? assignee.displayName : '未指派 (点击指派成员)'}
+                        </span>
+                      </div>
+                      <UserPlus size={13} style={{ opacity: 0.6 }} />
+                    </div>
+
+                    {userDropdownOpen && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: 'calc(100% + 4px)',
+                          left: 0,
+                          right: 0,
+                          backgroundColor: 'var(--bg-surface)',
+                          border: '1px solid var(--border-default)',
+                          borderRadius: 'var(--radius-sm)',
+                          boxShadow: 'var(--shadow-md)',
+                          zIndex: 50,
+                          padding: '6px',
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            border: '1px solid var(--border-default)',
+                            borderRadius: 'var(--radius-sm)',
+                            padding: '3px 6px',
+                            marginBottom: '6px',
+                          }}
+                        >
+                          <Search size={12} color="var(--text-muted)" />
+                          <input
+                            placeholder="搜索成员姓名..."
+                            value={userSearchText}
+                            onChange={(e) => setUserSearchText(e.target.value)}
+                            autoFocus
+                            style={{
+                              border: 'none',
+                              outline: 'none',
+                              flex: 1,
+                              fontSize: '12px',
+                              background: 'transparent',
+                            }}
+                          />
+                        </div>
+
+                        <div style={{ maxHeight: '190px', overflowY: 'auto' }}>
+                          <div
+                            onClick={() => {
+                              setAssignee(null)
+                              setUserDropdownOpen(false)
+                            }}
+                            style={{
+                              padding: '5px 8px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              borderRadius: 'var(--radius-sm)',
+                              color: 'var(--text-muted)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
+                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                          >
+                            <span>未指派</span>
+                            {!assignee && <Check size={12} color="var(--color-primary)" />}
+                          </div>
+
+                          {searchingUsers ? (
+                            <div style={{ padding: '6px 8px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                              搜索中...
+                            </div>
+                          ) : userSearchText.trim() ? (
+                            remoteUsers.length > 0 ? (
+                              remoteUsers.map((u) => {
+                                const isSelected = assignee?.name === u.name
+                                const freqItem = frequentUsers.find((f) => f.name === u.name)
+                                return (
+                                  <div
+                                    key={u.name}
+                                    onClick={() => {
+                                      const selected = {
+                                        name: u.name,
+                                        displayName: u.displayName || u.name,
+                                      }
+                                      setAssignee(selected)
+                                      recordUserSelection(selected)
+                                      setUserDropdownOpen(false)
+                                    }}
+                                    style={{
+                                      padding: '5px 8px',
+                                      fontSize: '12px',
+                                      cursor: 'pointer',
+                                      borderRadius: 'var(--radius-sm)',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      backgroundColor: isSelected ? 'var(--bg-surface-hover)' : 'transparent',
+                                    }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
+                                    onMouseLeave={(e) => {
+                                      if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent'
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <User size={12} color="var(--text-muted)" />
+                                      <span style={{ fontWeight: 500 }}>{u.displayName || u.name}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                      {freqItem && (
+                                        <span
+                                          style={{
+                                            fontSize: '9.5px',
+                                            padding: '1px 5px',
+                                            borderRadius: '3px',
+                                            backgroundColor: 'var(--bg-primary-subtle)',
+                                            color: 'var(--color-primary)',
+                                            fontWeight: 500,
+                                          }}
+                                        >
+                                          常用
+                                        </span>
+                                      )}
+                                      {isSelected && <Check size={12} color="var(--color-primary)" />}
+                                    </div>
+                                  </div>
+                                )
+                              })
+                            ) : (
+                              <div style={{ padding: '6px 8px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                                未找到匹配成员
+                              </div>
+                            )
+                          ) : frequentUsers.length > 0 ? (
+                            <>
+                              <div
+                                style={{
+                                  padding: '5px 8px 3px',
+                                  fontSize: '10px',
+                                  color: 'var(--text-muted)',
+                                  fontWeight: 600,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  borderTop: '1px solid var(--border-subtle)',
+                                  marginTop: '2px',
+                                }}
+                              >
+                                <Sparkles size={10} color="var(--color-warning)" />
+                                <span>常用成员</span>
+                              </div>
+                              {frequentUsers.map((u) => {
+                                const isSelected = assignee?.name === u.name
+                                return (
+                                  <div
+                                    key={u.name}
+                                    onClick={() => {
+                                      const selected = {
+                                        name: u.name,
+                                        displayName: u.displayName || u.name,
+                                      }
+                                      setAssignee(selected)
+                                      recordUserSelection(selected)
+                                      setUserDropdownOpen(false)
+                                    }}
+                                    style={{
+                                      padding: '5px 8px',
+                                      fontSize: '12px',
+                                      cursor: 'pointer',
+                                      borderRadius: 'var(--radius-sm)',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      backgroundColor: isSelected ? 'var(--bg-surface-hover)' : 'transparent',
+                                    }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)')}
+                                    onMouseLeave={(e) => {
+                                      if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent'
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <User size={12} color="var(--color-primary)" />
+                                      <span style={{ fontWeight: 500 }}>{u.displayName || u.name}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                      {isSelected && <Check size={12} color="var(--color-primary)" />}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </>
+                          ) : (
+                            <div style={{ padding: '6px 8px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                              输入姓名搜索更多成员...
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -499,20 +797,94 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ issueKey, onClose, onUpd
           )}
         </div>
 
-        <div data-ui="drawer-footer">
-          <button data-ui="button" onClick={onClose}>
-            关闭
-          </button>
-          <button
-            data-ui="button"
-            data-variant="primary"
-            onClick={handleSaveFields}
-            disabled={saving || !issue}
-          >
-            {saving ? '保存中...' : '保存更改'}
-          </button>
+        <div
+          data-ui="drawer-footer"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <div>
+            {issue && (
+              <button
+                type="button"
+                data-ui="button"
+                data-variant="primary"
+                onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect()
+                  setResolvingAnchorRect(rect)
+                  setResolvingOpen(true)
+                }}
+                title="处理任务 (解决 / 指派他人 / 拒绝)"
+                style={{
+                  backgroundColor:
+                    issue.statusCategory !== 'Done'
+                      ? 'var(--color-success)'
+                      : undefined,
+                  borderColor:
+                    issue.statusCategory !== 'Done'
+                      ? 'var(--color-success)'
+                      : undefined,
+                  color: issue.statusCategory !== 'Done' ? '#fff' : undefined,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                {issue.statusCategory !== 'Done' ? '处理' : '流转'}
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button data-ui="button" onClick={onClose}>
+              关闭
+            </button>
+            <button
+              data-ui="button"
+              data-variant="primary"
+              onClick={handleSaveFields}
+              disabled={saving || !issue}
+            >
+              {saving ? '保存中...' : '保存更改'}
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* 快捷处理与指派弹窗 */}
+      <QuickResolveModal
+        isOpen={resolvingOpen}
+        issue={issue}
+        anchorRect={resolvingAnchorRect}
+        onClose={() => {
+          setResolvingOpen(false)
+          setResolvingAnchorRect(null)
+        }}
+        onResolved={async () => {
+          setResolvingOpen(false)
+          setResolvingAnchorRect(null)
+          if (issueKey) {
+            try {
+              const [updated, transList] = await Promise.all([
+                api.getIssue(issueKey),
+                api.getTransitions(issueKey).catch(() => []),
+              ])
+              setIssue(updated)
+              setTransitions(transList)
+              if (updated.assignee) {
+                setAssignee({
+                  name: updated.assignee.name,
+                  displayName: updated.assignee.displayName || updated.assignee.name,
+                })
+              } else {
+                setAssignee(null)
+              }
+            } catch { }
+          }
+          if (onUpdated) onUpdated()
+        }}
+      />
     </>
   )
 }

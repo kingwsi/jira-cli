@@ -356,6 +356,26 @@ func (c *Client) UpdateIssue(issueKey string, fields map[string]interface{}) err
 	return nil
 }
 
+func (c *Client) AssignIssue(issueKey, assigneeName string) error {
+	data := map[string]interface{}{
+		"name": assigneeName,
+	}
+
+	resp, err := c.Client.R().
+		SetBody(data).
+		Put("issue/" + issueKey + "/assignee")
+
+	if apiErr := c.handleResponse(resp, err); apiErr != nil {
+		// 如果 /assignee 端点返回错误，尝试通过 fields.assignee 更新
+		return c.UpdateIssue(issueKey, map[string]interface{}{
+			"assignee": map[string]string{"name": assigneeName},
+		})
+	}
+
+	return nil
+}
+
+
 func (c *Client) CreateIssue(project, summary, issueType, description, parentKey string) (*Issue, error) {
 	var result Issue
 	fields := map[string]interface{}{

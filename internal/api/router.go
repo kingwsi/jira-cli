@@ -50,6 +50,7 @@ func NewRouter(reminderService *reminder.Service, updates ...*updater.Service) h
 	planH := NewPlanningHandler(metadataCache)
 	workH := NewWorklogHandler()
 	reminderH := NewReminderHandler(reminderService)
+	userHistoryH := NewUserHistoryHandler()
 
 	if len(updates) > 0 {
 		registerUpdates(mux, updates[0])
@@ -65,6 +66,8 @@ func NewRouter(reminderService *reminder.Service, updates ...*updater.Service) h
 	mux.HandleFunc("GET /api/v1/projects", planH.ListProjects)
 	mux.HandleFunc("GET /api/v1/users/me", planH.GetCurrentUser)
 	mux.HandleFunc("GET /api/v1/users/search", planH.SearchUsers)
+	mux.HandleFunc("GET /api/v1/users/history", userHistoryH.GetUserHistory)
+	mux.HandleFunc("POST /api/v1/users/history", userHistoryH.RecordUserHistory)
 
 	// 3. 任务与缺陷
 	mux.HandleFunc("GET /api/v1/issues", issueH.ListIssues)

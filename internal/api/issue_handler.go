@@ -492,9 +492,49 @@ func (h *IssueHandler) DoTransition(w http.ResponseWriter, r *http.Request) {
 	if action == "" {
 		if req.TransitionID == "reject" || req.TransitionID == "拒绝" {
 			action = "reject"
+		} else if req.TransitionID == "assign" || req.TransitionID == "指派" {
+			action = "assign"
 		} else {
 			action = "resolve"
 		}
+	}
+
+	// 专门处理指派任务 (assign)
+	if action == "assign" {
+		targetAssignee := strings.TrimSpace(req.Assignee)
+		if targetAssignee == "" {
+			writeError(w, http.StatusBadRequest, "指派处理人不能为空")
+			return
+		}
+
+		if err := client.AssignIssue(key, targetAssignee); err != nil {
+			writeError(w, http.StatusInternalServerError, "指派任务失败: "+err.Error())
+			return
+		}
+
+		// 如果指定了具体 transitionId 且不为内部保留字，则尝试执行状态流转
+		if req.TransitionID != "" && req.TransitionID != "assign" && req.TransitionID != "auto" && req.TransitionID != "指派" {
+			if err := client.DoTransition(key, req.TransitionID); err != nil {
+				log.Printf("[WARN] 指派成功但流转状态失败 %s: %v", key, err)
+			}
+		}
+
+		// 登记可选工时或添加备注
+		if timeSpent := strings.TrimSpace(req.TimeSpent); timeSpent != "" {
+			if err := client.AddWorklog(key, timeSpent, req.Comment, req.WorkDate); err != nil {
+				log.Printf("[WARN] 指派成功但登记工时失败 %s: %v", key, err)
+			}
+		} else if comment := strings.TrimSpace(req.Comment); comment != "" {
+			if err := client.AddComment(key, comment); err != nil {
+				log.Printf("[WARN] 指派成功但添加备注失败 %s: %v", key, err)
+			}
+		}
+
+		writeJSON(w, http.StatusOK, map[string]any{
+			"code":    0,
+			"message": "任务指派成功",
+		})
+		return
 	}
 
 	// 支持一步完成多步流转（先接收再解决/拒绝）
@@ -512,10 +552,7 @@ func (h *IssueHandler) DoTransition(w http.ResponseWriter, r *http.Request) {
 
 	// 更新经办人
 	if req.Assignee != "" {
-		fields := map[string]any{
-			"assignee": map[string]string{"name": req.Assignee},
-		}
-		if err := client.UpdateIssue(key, fields); err != nil {
+		if err := client.AssignIssue(key, req.Assignee); err != nil {
 			log.Printf("[WARN] 状态流转成功但更新经办人失败 %s: %v", key, err)
 		}
 	}

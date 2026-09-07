@@ -307,13 +307,9 @@ func (s *PlanningService) ConvertIssue(raw jira.Issue) models.IssueItem {
 	item.StartDate = s.extractDateField(raw, s.customFieldStartDate, raw.Fields.ExpectedStart)
 	item.EndDate = s.extractDateField(raw, s.customFieldEndDate, raw.Fields.ExpectedEnd)
 
-	// 解析时间
-	if t, err := time.Parse(time.RFC3339, raw.Fields.Created); err == nil {
-		item.CreatedAt = t
-	}
-	if t, err := time.Parse(time.RFC3339, raw.Fields.Updated); err == nil {
-		item.UpdatedAt = t
-	}
+	// 解析时间 (支持 Jira 默认格式 2006-01-02T15:04:05.000-0700 及 RFC3339 等各种格式)
+	item.CreatedAt = parseJiraTime(raw.Fields.Created)
+	item.UpdatedAt = parseJiraTime(raw.Fields.Updated)
 
 	// 解析子任务
 	if len(raw.Fields.Subtasks) > 0 {
@@ -887,3 +883,28 @@ func (s *PlanningService) BuildWorklogMatrix(monthStr string, worklogs []jira.Wo
 		Rows:        rows,
 	}
 }
+
+// parseJiraTime 兼容解析 Jira 各版本返回的时间字符串 (如 2024-03-05T14:30:25.000+0800 等)
+func parseJiraTime(s string) time.Time {
+	if s == "" {
+		return time.Time{}
+	}
+	formats := []string{
+		time.RFC3339,
+		"2006-01-02T15:04:05.000-0700",
+		"2006-01-02T15:04:05.000Z07:00",
+		"2006-01-02T15:04:05.000Z0700",
+		"2006-01-02T15:04:05-0700",
+		"2006-01-02T15:04:05.000Z",
+		"2006-01-02T15:04:05Z",
+		"2006-01-02 15:04:05",
+		"2006-01-02",
+	}
+	for _, layout := range formats {
+		if t, err := time.Parse(layout, s); err == nil {
+			return t
+		}
+	}
+	return time.Time{}
+}
+

@@ -187,21 +187,6 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
     window.open(`${jiraUrl}/browse/${key}`, '_blank', 'noopener,noreferrer')
   }
 
-  const getPriorityStyle = (priority: string) => {
-    switch (priority) {
-      case 'Highest':
-      case 'High':
-      case '最高':
-      case '高':
-        return { color: 'var(--color-danger)', fontWeight: 600 }
-      case 'Medium':
-      case '中':
-        return { color: 'var(--color-warning)', fontWeight: 500 }
-      default:
-        return { color: 'var(--text-secondary)' }
-    }
-  }
-
   const getTypeBadgeStyle = (type: string, projectKey?: string) => {
     if (projectKey === 'YFJD') {
       return {
@@ -855,14 +840,13 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
             <thead>
               <tr>
                 <th style={{ width: '125px' }}>Key</th>
-                <th style={{ width: '80px' }}>类型</th>
+                <th style={{ width: '105px', whiteSpace: 'nowrap' }}>类型</th>
                 <th>概要</th>
                 <th style={{ width: '100px' }}>状态</th>
-                <th style={{ width: '80px' }}>优先级</th>
                 <th style={{ width: '110px' }}>经办人</th>
                 <th style={{ width: '110px' }}>报告人</th>
                 <th style={{ width: '130px' }}>更新时间</th>
-                <th style={{ width: '150px', textAlign: 'center' }}>操作</th>
+                <th style={{ width: '110px', textAlign: 'center' }}>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -907,13 +891,15 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
                         <ExternalLink size={10} style={{ opacity: 0.6 }} />
                       </span>
                     </td>
-                    <td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
                       <span
                         style={{
                           fontSize: '11.5px',
-                          padding: '1px 6px',
+                          padding: '2px 8px',
                           borderRadius: '4px',
                           fontWeight: 500,
+                          whiteSpace: 'nowrap',
+                          display: 'inline-block',
                           ...getTypeBadgeStyle(item.issueType, item.projectKey),
                         }}
                       >
@@ -942,11 +928,6 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
                       </span>
                     </td>
                     <td>
-                      <span style={getPriorityStyle(item.priority)}>
-                        {item.priority || '-'}
-                      </span>
-                    </td>
-                    <td>
                       <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
                         {item.assignee?.displayName || '-'}
                       </span>
@@ -964,64 +945,13 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {item.updatedAt ? item.updatedAt.slice(0, 16).replace('T', ' ') : '-'}
+                        {item.updatedAt && !item.updatedAt.startsWith('0001-01-01')
+                          ? item.updatedAt.slice(0, 16).replace('T', ' ')
+                          : '-'}
                       </span>
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                        <CopyKeyButton
-                          issueKey={item.key}
-                          summary={item.summary}
-                          assigneeName={item.assignee?.displayName || item.assignee?.name}
-                          jiraUrl={jiraUrl}
-                        />
-                        {item.issueType === '协助' && item.status !== '验收中' && item.statusCategory !== 'Done' && (
-                          <button
-                            data-ui="button"
-                            data-variant="primary"
-                            data-size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              const rect = e.currentTarget.getBoundingClientRect()
-                              setResolvingAnchorRect(rect)
-                              setResolvingIssue(item)
-                            }}
-                            title="点击直接流转到验收中（可指派给提单人/报告人）"
-                            style={{
-                              padding: '2px 8px',
-                              fontSize: '11.5px',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              backgroundColor: 'var(--color-success)',
-                              borderColor: 'var(--color-success)',
-                              color: '#fff',
-                            }}
-                          >
-                            <span>完成</span>
-                          </button>
-                        )}
-                        {item.issueType === '协助' && item.status === '验收中' && (
-                          <button
-                            data-ui="button"
-                            data-variant="secondary"
-                            data-size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              const rect = e.currentTarget.getBoundingClientRect()
-                              setResolvingAnchorRect(rect)
-                              setResolvingIssue(item)
-                            }}
-                            title="流转状态"
-                            style={{
-                              padding: '2px 6px',
-                              fontSize: '11.5px',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                            }}
-                          >
-                            <span>流转</span>
-                          </button>
-                        )}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                         {isTaskOrder && (
                           <button
                             data-ui="button"
@@ -1034,7 +964,7 @@ export const RequirementsPage: React.FC<RequirementsPageProps> = ({
                             title="更新本周进度与周报备注"
                             style={{
                               fontSize: '11.5px',
-                              padding: '2px 6px',
+                              padding: '2px 8px',
                               color: '#00875A',
                               borderColor: 'rgba(0, 135, 90, 0.4)',
                             }}

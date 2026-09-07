@@ -12,12 +12,14 @@ import {
   Check,
   ChevronDown,
   Plus,
+  Sparkles,
 } from 'lucide-react'
 import { api } from '../api/client'
 import { WorklogMatrixResponse, WorklogWeekResponse } from '../types'
 import { TaskDrawer } from '../components/TaskDrawer'
 import { WorklogDrawer } from '../components/WorklogDrawer'
 import { WorklogsSkeleton } from '../components/Skeleton'
+import { getFrequentUsers, loadFrequentUsers, recordUserSelection, UserHistoryItem } from '../utils/recentUsers'
 import {
   getRangeDaysWithHolidays,
   syncHolidaysFromRemote,
@@ -114,7 +116,16 @@ export const WorklogsPage: React.FC = () => {
   const [userSearchText, setUserSearchText] = useState('')
   const [remoteUsers, setRemoteUsers] = useState<any[]>([])
   const [searchingUsers, setSearchingUsers] = useState(false)
+  const [frequentUsers, setFrequentUsers] = useState<UserHistoryItem[]>([])
   const userDropdownRef = useRef<HTMLDivElement>(null)
+
+  // 打开下拉时刷新常用成员历史
+  useEffect(() => {
+    if (userDropdownOpen) {
+      setFrequentUsers(getFrequentUsers(8))
+      loadFrequentUsers(8).then(setFrequentUsers).catch(() => { })
+    }
+  }, [userDropdownOpen])
 
   // 节假日远程同步信号
   const [holidayVersion, setHolidayVersion] = useState(0)
@@ -278,10 +289,10 @@ export const WorklogsPage: React.FC = () => {
         map[info.dateStr] =
           hours > 0
             ? {
-                tone: 'rest-overtime',
-                label: `${info.holidayName || (info.dayOfWeek === 0 || info.dayOfWeek === 6 ? '周末' : '')}加班`,
-                hours,
-              }
+              tone: 'rest-overtime',
+              label: `${info.holidayName || (info.dayOfWeek === 0 || info.dayOfWeek === 6 ? '周末' : '')}加班`,
+              hours,
+            }
             : { tone: 'rest', label: info.holidayName ? '假期休息' : '休息', hours }
         continue
       }
@@ -515,17 +526,15 @@ export const WorklogsPage: React.FC = () => {
               fontSize: '12px',
               color: hasTarget ? (isEnough ? '#006644' : '#974f0c') : 'var(--text-secondary)',
               backgroundColor: hasTarget ? (isEnough ? '#e3fcef' : '#fff7d6') : 'var(--bg-surface-dim)',
-              border: `1px solid ${
-                hasTarget ? (isEnough ? '#abf5d1' : '#f5cd47') : 'var(--border-default)'
-              }`,
+              border: `1px solid ${hasTarget ? (isEnough ? '#abf5d1' : '#f5cd47') : 'var(--border-default)'
+                }`,
               padding: '4px 10px',
               borderRadius: 'var(--radius-sm)',
             }}
             title={
               hasTarget
-                ? `目标 = ${periodStats.workdays} 个工作日 × ${EXPECTED_HOURS_PER_DAY}h = ${expectedHours}h；${
-                    isEnough ? '工时足额' : `尚差 ${Math.max(expectedHours - totalHoursRounded, 0).toFixed(1)}h`
-                  }`
+                ? `目标 = ${periodStats.workdays} 个工作日 × ${EXPECTED_HOURS_PER_DAY}h = ${expectedHours}h；${isEnough ? '工时足额' : `尚差 ${Math.max(expectedHours - totalHoursRounded, 0).toFixed(1)}h`
+                }`
                 : '全部成员工时为汇总视图，不设个人目标'
             }
           >
@@ -697,6 +706,59 @@ export const WorklogsPage: React.FC = () => {
                         setUserDropdownOpen(false)
                       }}
                     />
+
+                    {/* 常用成员列表 (来自本地与后端数据库) */}
+                    {frequentUsers.length > 0 && (
+                      <div style={{ marginTop: '4px', paddingTop: '4px', borderTop: '1px solid var(--border-subtle)' }}>
+                        <div
+                          style={{
+                            padding: '3px 8px',
+                            fontSize: '10.5px',
+                            color: 'var(--text-muted)',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                          }}
+                        >
+                          <Sparkles size={10} color="var(--color-warning)" />
+                          <span>常用成员</span>
+                        </div>
+                        {frequentUsers.map((fu) => {
+                          const isSelected = assigneeFilter === fu.name || assigneeFilter === fu.displayName
+                          return (
+                            <div
+                              key={fu.name}
+                              onClick={() => {
+                                setAssigneeFilter(fu.name)
+                                recordUserSelection(fu)
+                                setUserDropdownOpen(false)
+                              }}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '5px 8px',
+                                borderRadius: 'var(--radius-sm)',
+                                cursor: 'pointer',
+                                fontSize: '12px',
+                                backgroundColor: isSelected ? 'var(--bg-surface-hover)' : 'transparent',
+                                fontWeight: isSelected ? 600 : 400,
+                                color: isSelected ? 'var(--color-primary)' : 'inherit',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <User size={12} color="var(--color-primary)" />
+                                <span>{fu.displayName || fu.name}</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                {isSelected && <Check size={13} />}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -717,11 +779,16 @@ export const WorklogsPage: React.FC = () => {
                     remoteUsers.map((u) => {
                       const userVal = u.name || u.displayName
                       const isSelected = assigneeFilter === userVal || assigneeFilter === u.displayName
+                      const freq = frequentUsers.find((f) => f.name === u.name)
                       return (
                         <div
                           key={u.name || u.key || u.displayName}
                           onClick={() => {
                             setAssigneeFilter(userVal)
+                            recordUserSelection({
+                              name: u.name || userVal,
+                              displayName: u.displayName || u.name,
+                            })
                             setUserDropdownOpen(false)
                           }}
                           style={{
@@ -761,7 +828,23 @@ export const WorklogsPage: React.FC = () => {
                               )}
                             </div>
                           </div>
-                          {isSelected && <Check size={14} />}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {freq && (
+                              <span
+                                style={{
+                                  fontSize: '9px',
+                                  padding: '1px 5px',
+                                  borderRadius: '3px',
+                                  backgroundColor: 'var(--bg-primary-subtle)',
+                                  color: 'var(--color-primary)',
+                                  fontWeight: 500,
+                                }}
+                              >
+                                常用
+                              </span>
+                            )}
+                            {isSelected && <Check size={14} />}
+                          </div>
                         </div>
                       )
                     })}
@@ -880,12 +963,12 @@ export const WorklogsPage: React.FC = () => {
                     viewMode === 'week'
                       ? weekReviewByDay[d.dateStr]
                       : computeMonthReview(
-                          d,
-                          matrixData?.rows.reduce(
-                            (acc, r) => acc + (r.dailySpentSeconds[d.dateStr] || 0),
-                            0
-                          )
+                        d,
+                        matrixData?.rows.reduce(
+                          (acc, r) => acc + (r.dailySpentSeconds[d.dateStr] || 0),
+                          0
                         )
+                      )
                   const tone = review?.tone || 'upcoming'
                   const ts = cellToneStyle(tone)
                   return (
@@ -1095,8 +1178,8 @@ export const WorklogsPage: React.FC = () => {
                               hrs > 0
                                 ? 'var(--text-primary)'
                                 : needFill
-                                ? 'var(--color-danger)'
-                                : '#b3bac5',
+                                  ? 'var(--color-danger)'
+                                  : '#b3bac5',
                           }}
                         >
                           {hrs > 0 ? formatHours(secs) : needFill ? '0' : '-'}
@@ -1112,8 +1195,8 @@ export const WorklogsPage: React.FC = () => {
                   {searchQuery
                     ? '没有找到匹配的工时记录'
                     : viewMode === 'week'
-                    ? '本周暂无工作日志记录，点击「填报工时」或任意日期格开始记录'
-                    : '当月暂无工作日志记录'}
+                      ? '本周暂无工作日志记录，点击「填报工时」或任意日期格开始记录'
+                      : '当月暂无工作日志记录'}
                 </div>
               )}
             </>

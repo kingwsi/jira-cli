@@ -93,6 +93,13 @@ export const api = {
   getCurrentUser,
   searchUsers: (query?: string) =>
     request<any[]>(`/users/search${query ? `?query=${encodeURIComponent(query)}` : ''}`),
+  getUserHistory: (limit?: number) =>
+    request<any[]>(`/users/history${limit ? `?limit=${limit}` : ''}`),
+  recordUserHistory: (user: { name: string; displayName?: string }) =>
+    request<{ success: boolean }>('/users/history', {
+      method: 'POST',
+      body: JSON.stringify(user),
+    }),
 
   // Issues
   getIssues: (params?: {
@@ -131,7 +138,7 @@ export const api = {
   doTransition: (params: {
     key: string
     transitionId?: string
-    action?: 'resolve' | 'reject'
+    action?: 'resolve' | 'reject' | 'assign'
     assignee?: string
     comment?: string
     timeSpent?: string

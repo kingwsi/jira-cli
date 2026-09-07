@@ -3,6 +3,8 @@ import {
   X,
   CheckCircle2,
   XCircle,
+  User,
+  UserPlus,
   Search,
   AlertCircle,
   Check,
@@ -13,15 +15,20 @@ import {
 import { IssueItem, UserInfo } from '../types'
 import { api } from '../api/client'
 import { DatePicker } from './DatePicker'
+import { getFrequentUsers, loadFrequentUsers, recordUserSelection, UserHistoryItem } from '../utils/recentUsers'
 
 interface QuickResolveModalProps {
   isOpen: boolean
   issue: IssueItem | null
   anchorRect?: DOMRect | null
   title?: string
+  initialAction?: 'resolve' | 'assign' | 'reject'
   resolveText?: string
   resolveConfirmText?: string
   resolvePlaceholder?: string
+  assignText?: string
+  assignConfirmText?: string
+  assignPlaceholder?: string
   rejectText?: string
   rejectConfirmText?: string
   rejectPlaceholder?: string
@@ -34,17 +41,23 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
   issue,
   anchorRect,
   title,
+  initialAction,
   resolveText,
   resolveConfirmText,
   resolvePlaceholder,
+  assignText,
+  assignConfirmText,
+  assignPlaceholder,
   rejectText,
   rejectConfirmText,
   rejectPlaceholder,
   onClose,
   onResolved,
 }) => {
-  // 流转动作：已解决/完成 (resolve) 或 拒绝 (reject)
-  const [action, setAction] = useState<'resolve' | 'reject'>('resolve')
+  // 流转动作：已解决/完成 (resolve) 或 指派他人 (assign) 或 拒绝 (reject)
+  const [action, setAction] = useState<'resolve' | 'assign' | 'reject'>(
+    initialAction || 'resolve'
+  )
   // 可选备注
   const [comment, setComment] = useState<string>('')
   // 可选耗费工时与日期
@@ -59,12 +72,16 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
     displayName: string
   } | null>(null)
 
+  // 本地常用成员历史记录 (按选择频次排序)
+  const [frequentUsers, setFrequentUsers] = useState<UserHistoryItem[]>([])
+
   // 成员搜索下拉状态
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
   const [userSearchText, setUserSearchText] = useState('')
   const [remoteUsers, setRemoteUsers] = useState<UserInfo[]>([])
   const [searchingUsers, setSearchingUsers] = useState(false)
   const userPickerRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
 
   const [submitting, setSubmitting] = useState(false)
@@ -79,11 +96,14 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
     (isAssist
       ? '协助流转 · 提请验收'
       : isBug
-      ? '缺陷流转'
-      : `${issue?.issueType || '任务'}流转`)
+        ? '缺陷流转'
+        : `${issue?.issueType || '任务'}流转`)
 
   const effectiveResolveText =
     resolveText || (isAssist ? '完成 (验收中)' : isBug ? '已解决' : '完成')
+
+  const effectiveAssignText =
+    assignText || (isBug ? '指派他人' : '指派处理')
 
   const effectiveRejectText =
     rejectText || (isAssist ? '拒绝协助' : isBug ? '拒绝' : '拒绝')
@@ -91,6 +111,12 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
   const effectiveResolveConfirm =
     resolveConfirmText ||
     (isAssist ? '确认流转至验收中' : isBug ? '确认解决' : '确认完成')
+
+  const effectiveAssignConfirm =
+    assignConfirmText ||
+    (selectedAssignee
+      ? `确认指派给 ${selectedAssignee.displayName}`
+      : '确认指派')
 
   const effectiveRejectConfirm =
     rejectConfirmText ||
@@ -101,6 +127,10 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
     (isAssist
       ? '填写协助完成说明（可选，如：已处理完成并配置完毕，请验收）...'
       : '填写解决说明（可选，如：已在最新分支修复）...')
+
+  const effectiveAssignPlaceholder =
+    assignPlaceholder ||
+    '填写指派说明或排查建议（可选，如：经排查为后端接口异常，请协助修复）...'
 
   const effectiveRejectPlaceholder =
     rejectPlaceholder ||
@@ -116,14 +146,20 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
         .then((u) => {
           if (u) setCurrentUser(u)
         })
-        .catch(() => {})
+        .catch(() => { })
+    }
+    if (isOpen) {
+      setFrequentUsers(getFrequentUsers(6))
+      loadFrequentUsers(8)
+        .then((list) => setFrequentUsers(list.slice(0, 6)))
+        .catch(() => { })
     }
   }, [isOpen])
 
   // 初始化默认值
   useEffect(() => {
     if (!isOpen || !issue) {
-      setAction('resolve')
+      setAction(initialAction || 'resolve')
       setComment('')
       setSelectedAssignee(null)
       setError(null)
@@ -132,7 +168,7 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
       return
     }
 
-    setAction('resolve')
+    setAction(initialAction || 'resolve')
     setComment('')
     setTimeSpent('')
     setWorkDate(new Date().toISOString().slice(0, 10))
@@ -153,7 +189,7 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
     }
 
     setError(null)
-  }, [isOpen, issue])
+  }, [isOpen, issue, initialAction])
 
   // 远程成员防抖搜索
   useEffect(() => {
@@ -193,8 +229,16 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSubmitting(true)
     setError(null)
+
+    if (action === 'assign') {
+      if (!selectedAssignee || !selectedAssignee.name) {
+        setError('请选择要指派的目标成员')
+        return
+      }
+    }
+
+    setSubmitting(true)
 
     try {
       await api.doTransition({
@@ -203,14 +247,17 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
         action: action,
         assignee: selectedAssignee ? selectedAssignee.name : undefined,
         comment: comment.trim() || undefined,
-        timeSpent: timeSpent.trim() || undefined,
-        workDate: workDate.trim() || undefined,
-        autoChain: true,
+        timeSpent: action === 'resolve' ? (timeSpent.trim() || undefined) : undefined,
+        workDate: action === 'resolve' ? (workDate.trim() || undefined) : undefined,
+        autoChain: action !== 'assign',
       })
+      if (selectedAssignee && selectedAssignee.name) {
+        recordUserSelection(selectedAssignee)
+      }
       onResolved()
       onClose()
     } catch (err: any) {
-      setError(err.message || '流转状态失败')
+      setError(err.message || (action === 'assign' ? '指派任务失败' : '流转状态失败'))
     } finally {
       setSubmitting(false)
     }
@@ -229,7 +276,7 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
   // 计算轻量弹窗位置（贴合触发按钮或居中）
   let popoverStyle: React.CSSProperties = {
     position: 'fixed',
-    width: '360px',
+    width: '375px',
     backgroundColor: 'var(--bg-surface)',
     borderRadius: 'var(--radius-md)',
     boxShadow:
@@ -241,8 +288,8 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
   }
 
   if (anchorRect) {
-    const popoverWidth = 360
-    const popoverHeight = 390
+    const popoverWidth = 375
+    const popoverHeight = 400
     let right = window.innerWidth - anchorRect.right
     if (right < 16) right = 16
     if (window.innerWidth - right < popoverWidth) {
@@ -349,7 +396,7 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
               </div>
             )}
 
-            {/* 1. 快捷选项按钮：完成/已解决 vs 拒绝 */}
+            {/* 1. 快捷选项按钮：解决 vs 指派他人 vs 拒绝 */}
             <div>
               <div
                 style={{
@@ -358,13 +405,13 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
                   marginBottom: '6px',
                 }}
               >
-                选择流转动作
+                选择处理动作
               </div>
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '8px',
+                  gridTemplateColumns: '1fr 1fr 1fr',
+                  gap: '6px',
                 }}
               >
                 <button
@@ -374,10 +421,10 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '6px',
-                    padding: '8px 10px',
+                    gap: '5px',
+                    padding: '8px 6px',
                     borderRadius: 'var(--radius-sm)',
-                    fontSize: '13px',
+                    fontSize: '12px',
                     fontWeight: 600,
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
@@ -396,7 +443,7 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
                   }}
                 >
                   <CheckCircle2
-                    size={16}
+                    size={15}
                     color={
                       action === 'resolve'
                         ? 'var(--color-success)'
@@ -408,15 +455,54 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
 
                 <button
                   type="button"
+                  onClick={() => setAction('assign')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '5px',
+                    padding: '8px 6px',
+                    borderRadius: 'var(--radius-sm)',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    border:
+                      action === 'assign'
+                        ? '2px solid var(--color-primary)'
+                        : '1px solid var(--border-default)',
+                    backgroundColor:
+                      action === 'assign'
+                        ? 'var(--bg-primary-subtle)'
+                        : 'var(--bg-surface)',
+                    color:
+                      action === 'assign'
+                        ? 'var(--color-primary)'
+                        : 'var(--text-default)',
+                  }}
+                >
+                  <UserPlus
+                    size={15}
+                    color={
+                      action === 'assign'
+                        ? 'var(--color-primary)'
+                        : 'var(--text-muted)'
+                    }
+                  />
+                  <span>{effectiveAssignText}</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setAction('reject')}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '6px',
-                    padding: '8px 10px',
+                    gap: '5px',
+                    padding: '8px 6px',
                     borderRadius: 'var(--radius-sm)',
-                    fontSize: '13px',
+                    fontSize: '12px',
                     fontWeight: 600,
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
@@ -435,7 +521,7 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
                   }}
                 >
                   <XCircle
-                    size={16}
+                    size={15}
                     color={
                       action === 'reject'
                         ? 'var(--color-danger)'
@@ -447,7 +533,7 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
               </div>
             </div>
 
-            {/* 2. 流转人员指派 */}
+            {/* 2. 人员指派 */}
             <div>
               <div
                 style={{
@@ -458,9 +544,23 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
                 }}
               >
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  流转经办人
+                  {action === 'assign' ? '指派处理人 (必选)' : '流转经办人'}
                 </span>
-                {issue.reporter && (
+                {action === 'assign' ? (
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      color: 'var(--color-primary)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '2px',
+                      fontWeight: 500,
+                    }}
+                  >
+                    <Sparkles size={11} />
+                    选择接手该任务的成员
+                  </span>
+                ) : issue.reporter ? (
                   <span
                     style={{
                       fontSize: '11px',
@@ -473,7 +573,7 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
                     <Sparkles size={11} />
                     {isAssist ? '默认提出人 (验收人)' : '默认创建人'}
                   </span>
-                )}
+                ) : null}
               </div>
 
               {/* 快捷选择标签 */}
@@ -555,6 +655,46 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
                     当前: {issue.assignee.displayName || issue.assignee.name}
                   </button>
                 )}
+
+                {/* 常用成员快捷标签 (按选择次数排序) */}
+                {frequentUsers
+                  .filter(
+                    (u) =>
+                      u.name !== issue.reporter?.name &&
+                      u.name !== currentUser?.name &&
+                      u.name !== issue.assignee?.name
+                  )
+                  .slice(0, 4)
+                  .map((u) => {
+                    const isSelected = selectedAssignee?.name === u.name
+                    return (
+                      <button
+                        key={u.name}
+                        type="button"
+                        data-ui="button"
+                        data-variant={isSelected ? 'primary' : 'secondary'}
+                        data-size="sm"
+                        onClick={() =>
+                          setSelectedAssignee({
+                            name: u.name,
+                            displayName: u.displayName || u.name,
+                          })
+                        }
+                        style={{
+                          fontSize: '11px',
+                          padding: '2px 7px',
+                          height: '22px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                        }}
+                        title="常用成员"
+                      >
+                        <span style={{ color: 'var(--color-warning)' }}>★</span>
+                        <span>{u.displayName || u.name}</span>
+                      </button>
+                    )
+                  })}
               </div>
 
               {/* 搜索更多人员输入框 */}
@@ -563,16 +703,66 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px',
+                    gap: '6px',
                     border: '1px solid var(--border-default)',
                     borderRadius: 'var(--radius-sm)',
-                    padding: '2px 6px',
+                    padding: '3px 8px',
                     backgroundColor: 'var(--bg-surface)',
+                    minHeight: '32px',
+                    boxSizing: 'border-box',
+                    cursor: 'text',
+                  }}
+                  onClick={() => {
+                    inputRef.current?.focus()
+                    setUserDropdownOpen(true)
                   }}
                 >
-                  <Search size={12} color="var(--text-muted)" />
+                  <Search size={13} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+
+                  {/* 选中的用户胶囊标签显示在左侧 */}
+                  {selectedAssignee && (
+                    <div
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        backgroundColor: 'var(--bg-primary-subtle)',
+                        color: 'var(--color-primary)',
+                        border: '1px solid var(--border-primary)',
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '1px 6px',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        flexShrink: 0,
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <User size={11} />
+                      <span>{selectedAssignee.displayName}</span>
+                      <span
+                        title="清除已选成员"
+                        style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', opacity: 0.7 }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedAssignee(null)
+                          setUserSearchText('')
+                          inputRef.current?.focus()
+                        }}
+                      >
+                        <X size={11} />
+                      </span>
+                    </div>
+                  )}
+
                   <input
-                    placeholder="搜索指派给其他成员..."
+                    ref={inputRef}
+                    placeholder={
+                      selectedAssignee
+                        ? '输入以搜索更换...'
+                        : action === 'assign'
+                          ? '搜索指派给其他成员...'
+                          : '搜索经办人...'
+                    }
                     value={userSearchText}
                     onChange={(e) => {
                       setUserSearchText(e.target.value)
@@ -582,104 +772,192 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
                     style={{
                       border: 'none',
                       outline: 'none',
-                      flex: 1,
-                      height: '24px',
-                      fontSize: '12px',
                       background: 'transparent',
+                      fontSize: '12px',
+                      flex: 1,
+                      minWidth: '80px',
+                      color: 'var(--text-default)',
                     }}
                   />
-                  {selectedAssignee && (
-                    <span
-                      data-ui="tag"
-                      data-status="info"
-                      style={{ fontSize: '10px', padding: '1px 4px' }}
-                    >
-                      {selectedAssignee.displayName}
-                    </span>
-                  )}
                 </div>
 
-                {/* 成员下拉结果 */}
                 {userDropdownOpen && (
                   <div
                     style={{
                       position: 'absolute',
-                      top: 'calc(100% + 2px)',
+                      top: 'calc(100% + 4px)',
                       left: 0,
                       right: 0,
-                      maxHeight: '140px',
+                      maxHeight: '190px',
                       overflowY: 'auto',
                       backgroundColor: 'var(--bg-surface)',
                       border: '1px solid var(--border-default)',
                       borderRadius: 'var(--radius-sm)',
-                      boxShadow: 'var(--shadow-md)',
-                      zIndex: 100,
-                      padding: '2px 0',
+                      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
+                      zIndex: 70,
                     }}
                   >
                     {searchingUsers ? (
                       <div
                         style={{
-                          padding: '6px 10px',
+                          padding: '8px 10px',
                           fontSize: '11px',
                           color: 'var(--text-muted)',
                         }}
                       >
                         搜索中...
                       </div>
-                    ) : remoteUsers.length > 0 ? (
-                      remoteUsers.map((u) => {
-                        const isSelected = selectedAssignee?.name === u.name
-                        return (
-                          <div
-                            key={u.name}
-                            onClick={() => {
-                              setSelectedAssignee({
-                                name: u.name,
-                                displayName: u.displayName || u.name,
-                              })
-                              setUserSearchText('')
-                              setUserDropdownOpen(false)
-                            }}
-                            style={{
-                              padding: '5px 10px',
-                              fontSize: '12px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              cursor: 'pointer',
-                              backgroundColor: isSelected
-                                ? 'var(--bg-surface-hover)'
-                                : 'transparent',
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor =
-                                'var(--bg-surface-hover)'
-                            }}
-                            onMouseLeave={(e) => {
-                              if (!isSelected)
+                    ) : userSearchText.trim() ? (
+                      remoteUsers.length > 0 ? (
+                        remoteUsers.map((u) => {
+                          const isSelected = selectedAssignee?.name === u.name
+                          const freqItem = frequentUsers.find((f) => f.name === u.name)
+                          return (
+                            <div
+                              key={u.name}
+                              onClick={() => {
+                                setSelectedAssignee({
+                                  name: u.name,
+                                  displayName: u.displayName || u.name,
+                                })
+                                setUserSearchText('')
+                                setUserDropdownOpen(false)
+                              }}
+                              style={{
+                                padding: '6px 10px',
+                                fontSize: '12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                cursor: 'pointer',
+                                backgroundColor: isSelected
+                                  ? 'var(--bg-surface-hover)'
+                                  : 'transparent',
+                              }}
+                              onMouseEnter={(e) => {
                                 e.currentTarget.style.backgroundColor =
-                                  'transparent'
-                            }}
-                          >
-                            <span style={{ fontWeight: 500 }}>
-                              {u.displayName || u.name}
-                            </span>
-                            {isSelected && (
-                              <Check size={12} color="var(--color-primary)" />
-                            )}
-                          </div>
-                        )
-                      })
+                                  'var(--bg-surface-hover)'
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isSelected)
+                                  e.currentTarget.style.backgroundColor =
+                                    'transparent'
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <User size={12} color="var(--text-muted)" />
+                                <span style={{ fontWeight: 500 }}>
+                                  {u.displayName || u.name}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                {freqItem && (
+                                  <span
+                                    style={{
+                                      fontSize: '9.5px',
+                                      padding: '1px 5px',
+                                      borderRadius: '3px',
+                                      backgroundColor: 'var(--bg-primary-subtle)',
+                                      color: 'var(--color-primary)',
+                                      fontWeight: 500,
+                                    }}
+                                  >
+                                    常用
+                                  </span>
+                                )}
+                                {isSelected && (
+                                  <Check size={12} color="var(--color-primary)" />
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })
+                      ) : (
+                        <div
+                          style={{
+                            padding: '8px 10px',
+                            fontSize: '11px',
+                            color: 'var(--text-muted)',
+                          }}
+                        >
+                          未找到匹配成员
+                        </div>
+                      )
+                    ) : frequentUsers.length > 0 ? (
+                      <>
+                        <div
+                          style={{
+                            padding: '6px 10px 4px',
+                            fontSize: '10px',
+                            color: 'var(--text-muted)',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            borderBottom: '1px solid var(--border-subtle)',
+                          }}
+                        >
+                          <Sparkles size={11} color="var(--color-warning)" />
+                          <span>常用处理人</span>
+                        </div>
+                        {frequentUsers.map((u) => {
+                          const isSelected = selectedAssignee?.name === u.name
+                          return (
+                            <div
+                              key={u.name}
+                              onClick={() => {
+                                setSelectedAssignee({
+                                  name: u.name,
+                                  displayName: u.displayName || u.name,
+                                })
+                                setUserSearchText('')
+                                setUserDropdownOpen(false)
+                              }}
+                              style={{
+                                padding: '6px 10px',
+                                fontSize: '12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                cursor: 'pointer',
+                                backgroundColor: isSelected
+                                  ? 'var(--bg-surface-hover)'
+                                  : 'transparent',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor =
+                                  'var(--bg-surface-hover)'
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isSelected)
+                                  e.currentTarget.style.backgroundColor =
+                                    'transparent'
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <User size={12} color="var(--color-primary)" />
+                                <span style={{ fontWeight: 500 }}>
+                                  {u.displayName || u.name}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                {isSelected && (
+                                  <Check size={12} color="var(--color-primary)" />
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </>
                     ) : (
                       <div
                         style={{
-                          padding: '6px 10px',
+                          padding: '8px 10px',
                           fontSize: '11px',
                           color: 'var(--text-muted)',
                         }}
                       >
-                        {userSearchText ? '未找到成员' : '输入姓名检索'}
+                        输入姓名搜索成员...
                       </div>
                     )}
                   </div>
@@ -786,7 +1064,9 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
                 placeholder={
                   action === 'resolve'
                     ? effectiveResolvePlaceholder
-                    : effectiveRejectPlaceholder
+                    : action === 'assign'
+                      ? effectiveAssignPlaceholder
+                      : effectiveRejectPlaceholder
                 }
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
@@ -839,11 +1119,15 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
                 backgroundColor:
                   action === 'resolve'
                     ? 'var(--color-success)'
-                    : 'var(--color-danger)',
+                    : action === 'assign'
+                      ? 'var(--color-primary)'
+                      : 'var(--color-danger)',
                 borderColor:
                   action === 'resolve'
                     ? 'var(--color-success)'
-                    : 'var(--color-danger)',
+                    : action === 'assign'
+                      ? 'var(--color-primary)'
+                      : 'var(--color-danger)',
                 height: '28px',
                 fontSize: '12px',
                 padding: '0 12px',
@@ -854,15 +1138,19 @@ export const QuickResolveModal: React.FC<QuickResolveModalProps> = ({
             >
               {action === 'resolve' ? (
                 <CheckCircle2 size={13} />
+              ) : action === 'assign' ? (
+                <UserPlus size={13} />
               ) : (
                 <XCircle size={13} />
               )}
               <span>
                 {submitting
-                  ? '流转中...'
+                  ? '处理中...'
                   : action === 'resolve'
-                  ? effectiveResolveConfirm
-                  : effectiveRejectConfirm}
+                    ? effectiveResolveConfirm
+                    : action === 'assign'
+                      ? effectiveAssignConfirm
+                      : effectiveRejectConfirm}
               </span>
             </button>
           </div>
